@@ -1,0 +1,300 @@
+// Zor meal plan — Shaw's full weekly plan.
+// Editable at runtime via Settings (overrides stored in state + Sheets).
+
+export const MEAL_SLOTS = ["Breakfast", "Lunch", "Pre-gym", "Dinner", "Snack"];
+
+// Each meal: id, name, macros {p,c,f,fiber,kcal}, veg, recipe[], ingredients[]
+export const MEAL_PLAN = {
+  Mon: [
+    {
+      slot: "Breakfast",
+      id: "mon-b",
+      name: "Masala Veggie Omelette + Ezekiel Toast",
+      macros: { p: 30, c: 22, f: 14, fiber: 4, kcal: 334 },
+      veg: "Spinach, onion, tomato",
+      ingredients: ["2 whole eggs", "2 egg whites", "Onion", "Tomato", "Spinach", "Green chili", "Turmeric", "1 Ezekiel slice", "Lemon"],
+      recipe: [
+        "Whisk 2 whole eggs + 2 egg whites in a bowl.",
+        "Heat pan on medium with 1 tsp oil.",
+        "Add chopped onion, tomato, spinach, green chili, pinch turmeric + salt.",
+        "Pour eggs over, cook 3 min, fold.",
+        "Toast 1 Ezekiel slice alongside.",
+        "Squeeze lemon over spinach before eating — boosts iron absorption.",
+      ],
+    },
+    {
+      slot: "Lunch",
+      id: "mon-l",
+      name: "Chole Sandwich (triangle press)",
+      macros: { p: 32, c: 55, f: 10, fiber: 12, kcal: 444 },
+      veg: "Cucumber, onion",
+      ingredients: ["Sunday-prepped chole", "2 Ezekiel slices", "Onion", "Cucumber"],
+      recipe: [
+        "Take thick chole filling (not watery) from Sunday batch.",
+        "Spread on 1 Ezekiel slice, add thin raw onion + cucumber.",
+        "Close with second slice.",
+        "Press in sandwich maker 3-4 min till golden.",
+        "Wrap in foil, pack in tiffin.",
+      ],
+    },
+    {
+      slot: "Pre-gym",
+      id: "mon-p",
+      name: "Fairlife Chocolate + Banana + Creatine",
+      macros: { p: 33, c: 42, f: 5, fiber: 3, kcal: 345 },
+      veg: "Banana",
+      ingredients: ["1 Fairlife Chocolate bottle", "1 banana", "5g creatine"],
+      recipe: [
+        "Drink 1 Fairlife bottle cold (30g protein).",
+        "Eat 1 banana.",
+        "Stir 5g creatine into a small glass of water.",
+        "Consume 45-60 min before gym.",
+      ],
+    },
+    {
+      slot: "Dinner",
+      id: "mon-d",
+      name: "Paneer Tikka Bowl (air fryer)",
+      macros: { p: 38, c: 34, f: 20, fiber: 5, kcal: 464 },
+      veg: "Bell pepper, onion",
+      ingredients: ["120g paneer", "2 tbsp Greek yogurt", "Tikka masala", "Kashmiri chili", "Lemon", "1/2 cup quinoa", "Bell pepper", "Onion"],
+      recipe: [
+        "Cube 120g paneer. Marinate 15 min in Greek yogurt + tikka masala + kashmiri chili + lemon + salt.",
+        "Air fry 400F for 10 min, flip halfway.",
+        "Serve over 1/2 cup cooked quinoa.",
+        "Add stir-fried bell pepper + onion. Spoon style.",
+      ],
+    },
+    {
+      slot: "Snack",
+      id: "mon-s",
+      name: "Greek Yogurt + Berries + Flax",
+      macros: { p: 18, c: 16, f: 6, fiber: 4, kcal: 190 },
+      veg: "Berries",
+      ingredients: ["3/4 cup Greek yogurt", "Mixed berries", "1 tbsp ground flax"],
+      recipe: [
+        "3/4 cup Greek yogurt in a bowl.",
+        "Top with mixed berries + 1 tbsp ground flax.",
+        "Slow casein protein for overnight recovery.",
+      ],
+    },
+  ],
+  Tue: [
+    {
+      slot: "Breakfast", id: "tue-b", name: "Savory Besan French Toast",
+      macros: { p: 24, c: 30, f: 12, fiber: 4, kcal: 324 }, veg: "—",
+      ingredients: ["2 eggs", "2 tbsp milk", "Ajwain", "Chili flakes", "2 Ezekiel slices", "1 tsp butter"],
+      recipe: ["Whisk 2 eggs + 2 tbsp milk + pinch salt + ajwain + chili flakes.", "Dip 2 Ezekiel slices fully in batter.", "Pan fry in 1 tsp butter, 2-3 min per side until golden crispy."],
+    },
+    {
+      slot: "Lunch", id: "tue-l", name: "Chole Tikki (air fryer patties)",
+      macros: { p: 28, c: 48, f: 10, fiber: 10, kcal: 394 }, veg: "Cucumber, tomato, carrot",
+      ingredients: ["Sunday tikki patties", "Cucumber", "Cherry tomatoes", "Carrot", "Mint chutney"],
+      recipe: ["Air fry 2-3 raw tikki patties at 390F for 12 min, flip at 6.", "Pack hot in foil.", "Side: cucumber + cherry tomatoes + carrot sticks + mint chutney."],
+    },
+    {
+      slot: "Pre-gym", id: "tue-p", name: "Orgain Shake + Banana + Creatine",
+      macros: { p: 32, c: 40, f: 5, fiber: 3, kcal: 333 }, veg: "Banana",
+      ingredients: ["1.5 scoops Orgain", "350ml water/milk", "1 banana", "5g creatine"],
+      recipe: ["1.5 scoops Orgain in 350ml water or milk. Shake.", "1 banana.", "5g creatine in small water."],
+    },
+    {
+      slot: "Dinner", id: "tue-d", name: "Paneer Bhurji Sandwich (press)",
+      macros: { p: 40, c: 36, f: 22, fiber: 7, kcal: 494 }, veg: "Onion, tomato, peas",
+      ingredients: ["120g paneer", "Onion", "Tomato", "Frozen peas", "Turmeric", "Garam masala", "2 Ezekiel slices"],
+      recipe: ["1 tsp oil, cumin seeds, onion 3 min, tomato 2 min, peas, turmeric, salt, garam masala.", "Add 120g crumbled paneer, cook 3 min.", "Stuff between 2 Ezekiel slices. Press 3-4 min."],
+    },
+    {
+      slot: "Snack", id: "tue-s", name: "Greek Yogurt + Walnuts",
+      macros: { p: 18, c: 8, f: 14, fiber: 2, kcal: 226 }, veg: "—",
+      ingredients: ["3/4 cup Greek yogurt", "7-8 walnut halves"],
+      recipe: ["3/4 cup Greek yogurt + 7-8 walnut halves.", "Best plant omega-3 source."],
+    },
+  ],
+  Wed: [
+    {
+      slot: "Breakfast", id: "wed-b", name: "3-Egg Omelette + Ezekiel Toast",
+      macros: { p: 32, c: 24, f: 16, fiber: 5, kcal: 364 }, veg: "Mushroom, spinach",
+      ingredients: ["2 whole eggs", "1 egg white", "Mushrooms", "Spinach", "1 Ezekiel slice"],
+      recipe: ["2 whole eggs + 1 egg white. Add mushrooms, spinach, salt + pepper.", "Cook 3 min, fold.", "1 Ezekiel toast. Leg day needs fuel. Lemon on spinach."],
+    },
+    {
+      slot: "Lunch", id: "wed-l", name: "Chole Chaat Bowl (no heat)",
+      macros: { p: 30, c: 50, f: 12, fiber: 12, kcal: 428 }, veg: "Onion, tomato, cucumber",
+      ingredients: ["Cold chole", "Onion", "Tomato", "Cucumber", "Lemon", "Chaat masala"],
+      recipe: ["Cold Sunday chole in tiffin.", "Top with onion + tomato + cucumber + big squeeze lemon + chaat masala.", "Tangy chaat style, no heating. Lemon = iron absorption."],
+    },
+    {
+      slot: "Pre-gym", id: "wed-p", name: "Fairlife + Banana + Creatine",
+      macros: { p: 33, c: 42, f: 5, fiber: 3, kcal: 345 }, veg: "Banana",
+      ingredients: ["1 Fairlife bottle", "1 banana", "5g creatine"],
+      recipe: ["1 Fairlife + 1 banana + 5g creatine.", "Leg day = highest carb need. Don't skip banana."],
+    },
+    {
+      slot: "Dinner", id: "wed-d", name: "Chole Masala + Quinoa",
+      macros: { p: 30, c: 58, f: 12, fiber: 14, kcal: 460 }, veg: "Onion",
+      ingredients: ["1.5 cups chole", "1/2 cup quinoa", "Onion", "Lemon"],
+      recipe: ["Reheat 1.5 cups chole.", "Cook 1/2 cup dry quinoa (12 min).", "Quinoa base, chole on top, raw onion, squeeze lemon.", "Complete protein combo."],
+    },
+    {
+      slot: "Snack", id: "wed-s", name: "Greek Yogurt + Berries + Flax",
+      macros: { p: 18, c: 16, f: 7, fiber: 5, kcal: 200 }, veg: "Berries",
+      ingredients: ["3/4 cup Greek yogurt", "Berries", "1 tbsp flax"],
+      recipe: ["3/4 cup yogurt + berries + 1 tbsp flax. Recovery night."],
+    },
+  ],
+  Thu: [
+    {
+      slot: "Breakfast", id: "thu-b", name: "Boiled Eggs + Orgain + Creatine",
+      macros: { p: 36, c: 18, f: 14, fiber: 1, kcal: 338 }, veg: "—",
+      ingredients: ["3 boiled eggs", "1 scoop Orgain", "5g creatine"],
+      recipe: ["3 boiled eggs from Sunday batch — just peel.", "1 scoop Orgain + 5g creatine in water.", "Zero cooking. Laziest morning."],
+    },
+    {
+      slot: "Lunch", id: "thu-l", name: "Paneer Tikka Wrap (kathi roll)",
+      macros: { p: 32, c: 30, f: 18, fiber: 5, kcal: 410 }, veg: "Cucumber, bell pepper",
+      ingredients: ["100g paneer tikka", "1 Ezekiel slice", "Cucumber", "Bell pepper", "Mint chutney", "Coriander"],
+      recipe: ["Warm 1 Ezekiel slice in press 30 sec.", "Load with 100g cold tikka chunks + cucumber + bell pepper strips + mint chutney + coriander.", "Fold, wrap in foil. Eats like kathi roll."],
+    },
+    {
+      slot: "Pre-gym", id: "thu-p", name: "Orgain Shake + Banana + Creatine",
+      macros: { p: 32, c: 40, f: 5, fiber: 3, kcal: 333 }, veg: "Banana",
+      ingredients: ["1.5 scoops Orgain", "1 banana", "5g creatine"],
+      recipe: ["1.5 scoops Orgain + 1 banana + 5g creatine."],
+    },
+    {
+      slot: "Dinner", id: "thu-d", name: "Omelette Wrap (press)",
+      macros: { p: 32, c: 22, f: 18, fiber: 5, kcal: 378 }, veg: "Onion, bell pepper",
+      ingredients: ["2 whole eggs", "1 egg white", "Chole masala", "Onion", "Bell pepper"],
+      recipe: ["2 whole eggs + 1 white, cook flat thin omelette.", "Load with 1 spoon chole masala + sauteed onion + bell pepper.", "Fold in half, press 2 min."],
+    },
+    {
+      slot: "Snack", id: "thu-s", name: "Greek Yogurt + Berries",
+      macros: { p: 18, c: 14, f: 5, fiber: 3, kcal: 173 }, veg: "Berries",
+      ingredients: ["3/4 cup Greek yogurt", "Berries"],
+      recipe: ["3/4 cup Greek yogurt + berries."],
+    },
+  ],
+  Fri: [
+    {
+      slot: "Breakfast", id: "fri-b", name: "Savory French Toast + Orange",
+      macros: { p: 24, c: 35, f: 12, fiber: 5, kcal: 344 }, veg: "Orange",
+      ingredients: ["2 Ezekiel slices", "2 eggs", "Milk", "1 small orange"],
+      recipe: ["Same as Tuesday French toast.", "Side: 1 small orange.", "Rest day, slightly lighter."],
+    },
+    {
+      slot: "Lunch", id: "fri-l", name: "Chole Tikki + Raw Veggie Box",
+      macros: { p: 26, c: 42, f: 10, fiber: 10, kcal: 362 }, veg: "Carrot, cucumber, tomato",
+      ingredients: ["Tikki patties", "Carrot", "Cucumber", "Cherry tomatoes", "Lemon"],
+      recipe: ["Last tikkis, air fry 12 min.", "Side: carrot sticks + cucumber + cherry tomatoes + lemon wedge."],
+    },
+    {
+      slot: "Pre-gym", id: "fri-p", name: "Apple + 10 Almonds (rest day)",
+      macros: { p: 5, c: 22, f: 8, fiber: 4, kcal: 177 }, veg: "Apple",
+      ingredients: ["1 apple", "10 almonds"],
+      recipe: ["No gym today. Light snack only.", "No protein shake — rest day calories stay lower."],
+    },
+    {
+      slot: "Dinner", id: "fri-d", name: "Paneer Makhani (no cream) + Ezekiel",
+      macros: { p: 36, c: 32, f: 24, fiber: 6, kcal: 484 }, veg: "Onion, tomato",
+      ingredients: ["120g paneer", "Onion", "Ginger-garlic paste", "1/2 can crushed tomato", "Kashmiri chili", "Cardamom", "2 tbsp Greek yogurt", "1 Ezekiel slice"],
+      recipe: ["1 tsp oil, onion + ginger-garlic paste 3 min.", "Add 1/2 can crushed tomato + kashmiri chili + cardamom + salt, simmer 5 min.", "Add 120g paneer + 2 tbsp Greek yogurt. Cook 5 min.", "Serve with 1 Ezekiel toast."],
+    },
+    {
+      slot: "Snack", id: "fri-s", name: "Greek Yogurt + Walnuts",
+      macros: { p: 18, c: 8, f: 14, fiber: 2, kcal: 226 }, veg: "—",
+      ingredients: ["3/4 cup Greek yogurt", "Walnuts"],
+      recipe: ["3/4 cup yogurt + walnuts."],
+    },
+  ],
+  Sat: [
+    {
+      slot: "Breakfast", id: "sat-b", name: "Big Weekend Omelette + Ezekiel + Fruit",
+      macros: { p: 34, c: 38, f: 20, fiber: 7, kcal: 468 }, veg: "Mixed veg + mixed fruit",
+      ingredients: ["3 eggs", "Mushroom", "Bell pepper", "Spinach", "Onion", "Cheese", "1 Ezekiel slice", "Mixed fruit"],
+      recipe: ["3 eggs (2 whole + 1 white). Loaded: mushroom, bell pepper, spinach, onion, sprinkle cheese.", "1 Ezekiel toast.", "Side: mixed fresh fruit bowl."],
+    },
+    {
+      slot: "Lunch", id: "sat-l", name: "Chana Tikki Burger (fresh, press)",
+      macros: { p: 30, c: 55, f: 14, fiber: 12, kcal: 466 }, veg: "Tomato, onion, cucumber",
+      ingredients: ["Tikki patties", "2 Ezekiel slices", "Tomato", "Red onion", "Cucumber", "Greek yogurt", "Mint chutney"],
+      recipe: ["Make fresh tikki patties. Air fry crispy.", "Between 2 Ezekiel slices: tomato, red onion, cucumber, Greek yogurt + mint chutney.", "Press in sandwich maker."],
+    },
+    {
+      slot: "Pre-gym", id: "sat-p", name: "Fairlife + Banana + Creatine",
+      macros: { p: 33, c: 42, f: 5, fiber: 3, kcal: 345 }, veg: "Banana",
+      ingredients: ["1 Fairlife bottle", "1 banana", "5g creatine"],
+      recipe: ["Standard pre-gym. Gym closes 7PM — go by 5PM."],
+    },
+    {
+      slot: "Dinner", id: "sat-d", name: "Cheat Meal — Eat Out", isCheat: true,
+      macros: { p: 25, c: 60, f: 30, fiber: 5, kcal: 600 }, veg: "Whatever the restaurant has",
+      ingredients: [],
+      recipe: ["Saturday dinner out. Guilt-free.", "Good Indian restaurant, burger, pasta — your choice.", "Refeeds glycogen and leptin. Keeps the diet sustainable.", "Don't count. One meal doesn't undo 6 days."],
+    },
+    {
+      slot: "Snack", id: "sat-s", name: "Greek Yogurt (small)",
+      macros: { p: 12, c: 6, f: 3, fiber: 0, kcal: 99 }, veg: "—",
+      ingredients: ["1/2 cup Greek yogurt"],
+      recipe: ["Small 1/2 cup Greek yogurt. Brings protein back up post-cheat."],
+    },
+  ],
+  Sun: [
+    {
+      slot: "Breakfast", id: "sun-b", name: "Sweet French Toast + Banana",
+      macros: { p: 26, c: 40, f: 14, fiber: 5, kcal: 386 }, veg: "Banana",
+      ingredients: ["2 Ezekiel slices", "2 eggs", "Milk", "Cinnamon", "Vanilla", "1 banana"],
+      recipe: ["2 Ezekiel slices + egg batter (2 eggs + milk + cinnamon + vanilla).", "Pan fry golden.", "Side: sliced banana. Cinnamon improves insulin sensitivity."],
+    },
+    {
+      slot: "Lunch", id: "sun-l", name: "Greek Yogurt Bowl + Fruit + Orgain",
+      macros: { p: 30, c: 50, f: 18, fiber: 8, kcal: 474 }, veg: "Banana, berries",
+      ingredients: ["1 cup Greek yogurt", "Banana", "Berries", "10 almonds", "1 tbsp flax", "1/2 scoop Orgain"],
+      recipe: ["1 cup Greek yogurt + banana + berries + 10 almonds + 1 tbsp flax + 1/2 scoop Orgain.", "No cooking post-prep."],
+    },
+    {
+      slot: "Pre-gym", id: "sun-p", name: "Rest Day — No Pre-gym", isRest: true,
+      macros: { p: 0, c: 0, f: 0, fiber: 0, kcal: 0 }, veg: "—",
+      ingredients: [],
+      recipe: ["Rest day. No pre-gym meal needed."],
+    },
+    {
+      slot: "Dinner", id: "sun-d", name: "Paneer Tikka + Stir-fry Veg + Quinoa",
+      macros: { p: 38, c: 42, f: 22, fiber: 9, kcal: 514 }, veg: "Broccoli, bell pepper",
+      ingredients: ["Paneer tikka", "1/2 cup quinoa", "Broccoli", "Bell pepper", "Garlic"],
+      recipe: ["Air fry paneer tikka from Sunday batch.", "1/2 cup quinoa.", "Stir-fry broccoli + bell pepper + garlic in 1 tsp oil 5 min.", "Plate together."],
+    },
+    {
+      slot: "Snack", id: "sun-s", name: "Greek Yogurt + Berries + Flax",
+      macros: { p: 18, c: 16, f: 7, fiber: 5, kcal: 196 }, veg: "Berries",
+      ingredients: ["3/4 cup Greek yogurt", "Berries", "Flax"],
+      recipe: ["3/4 cup yogurt + berries + flax."],
+    },
+  ],
+};
+
+// Indian staples database for custom logging
+export const STAPLES = [
+  { name: "Paneer (100g)", p: 18, c: 4, f: 20, fiber: 0, kcal: 265 },
+  { name: "Chole cooked (1 cup)", p: 15, c: 45, f: 4, fiber: 12, kcal: 269 },
+  { name: "Masoor dal (1 cup)", p: 18, c: 40, f: 1, fiber: 16, kcal: 230 },
+  { name: "Moong dal (1 cup)", p: 14, c: 39, f: 1, fiber: 15, kcal: 212 },
+  { name: "Greek yogurt (1 cup)", p: 23, c: 9, f: 5, fiber: 0, kcal: 170 },
+  { name: "Orgain shake (1 scoop)", p: 21, c: 15, f: 4, fiber: 5, kcal: 150 },
+  { name: "Fairlife Chocolate (1 bottle)", p: 30, c: 4, f: 4.5, fiber: 1, kcal: 150 },
+  { name: "Ezekiel bread (1 slice)", p: 5, c: 15, f: 0.5, fiber: 3, kcal: 80 },
+  { name: "Quinoa cooked (1 cup)", p: 8, c: 39, f: 4, fiber: 5, kcal: 222 },
+  { name: "Egg (1 large)", p: 6, c: 0.5, f: 5, fiber: 0, kcal: 72 },
+  { name: "Banana (1 medium)", p: 1, c: 27, f: 0.3, fiber: 3, kcal: 105 },
+  { name: "Brown rice (1 cup)", p: 5, c: 45, f: 2, fiber: 4, kcal: 216 },
+  { name: "Tofu firm (100g)", p: 17, c: 3, f: 9, fiber: 2, kcal: 144 },
+  { name: "Walnuts (7 halves)", p: 3, c: 2, f: 13, fiber: 1, kcal: 131 },
+  { name: "Almonds (10)", p: 3, c: 2, f: 6, fiber: 1.5, kcal: 70 },
+  { name: "Mixed berries (1 cup)", p: 1, c: 17, f: 0.5, fiber: 4, kcal: 70 },
+  { name: "Apple (1 medium)", p: 0.5, c: 25, f: 0.3, fiber: 4, kcal: 95 },
+  { name: "Orange (1 medium)", p: 1, c: 15, f: 0.2, fiber: 3, kcal: 62 },
+];
+
+export const DAILY_TARGETS = { p: 145, c: 175, f: 58, fiber: 32, kcal: 1850 };
+
+export const DAY_KEYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
