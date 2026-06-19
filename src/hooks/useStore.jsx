@@ -230,7 +230,7 @@ export function StoreProvider({ children }) {
     });
   }, [syncMeals]);
 
-  const unlogMeal = useCallback((slot, dateISO) => {
+  const unlogMeal = useCallback((dateISO, slot) => {
     const date = dateISO || todayISO();
     setMeals((m) => {
       const next = m.filter((x) => !(x.date === date && x.slot === slot));

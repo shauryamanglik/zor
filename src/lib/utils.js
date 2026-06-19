@@ -21,7 +21,15 @@ export function greeting(d = new Date()) {
 
 export function haptic(type = "light") {
   if (!("vibrate" in navigator)) return;
-  const map = { light: 8, medium: 18, heavy: [25, 30, 25], success: [12, 40, 12] };
+  const map = {
+    light: 8,
+    medium: 18,
+    heavy: [25, 30, 25],
+    success: [12, 40, 12],
+    pr: [15, 50, 15, 50, 40],        // triple-pulse, distinct and satisfying
+    exerciseDone: [20, 40, 20],       // double buzz
+    warn: [10, 30, 10],
+  };
   navigator.vibrate(map[type] || 8);
 }
 

@@ -8,7 +8,7 @@ import {
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar } from "recharts";
 import { useStore } from "../../hooks/useStore";
 import { Card, Button, Stepper, Sheet, Pill as Tag, EmptyState } from "../shared/UI";
-import { MovementArt } from "./MovementArt";
+import { getExerciseGif } from "../../lib/exerciseGifs";
 import { PROGRAM, WARMUPS } from "../../data/workouts";
 import { todayKey, isRestDay, haptic, epley1rm } from "../../lib/utils";
 
@@ -186,6 +186,8 @@ function SessionRunner({ session, dayKey, deload, onExit }) {
   const [paused, setPaused] = useState(false);
   const [isWarmupSet, setIsWarmupSet] = useState(false);
   const [restEditorOpen, setRestEditor] = useState(false);
+  const [doneExercises, setDoneExercises] = useState({}); // {exId: true} fully completed
+  const [confirmEnd, setConfirmEnd] = useState(false);    // end confirmation overlay
 
   const ex = exList[exIdx];
   const startTimeRef = useRef(Date.now());
@@ -267,17 +269,17 @@ function SessionRunner({ session, dayKey, deload, onExit }) {
   };
 
   const logSet = () => {
-    haptic("medium");
     const isPR = !isWarmupSet && ex.kind !== "bodyweight" && lastBest && weight > lastBest.weight;
     const unit = ex.kind === "bodyweight" && ex.repsUnit === "sec" ? "sec" : store.units;
     store.logSet(session.name, ex.name, setIdx + 1, isWarmupSet ? 0 : weight, reps, unit, isPR, isWarmupSet);
     pushSet({ weight: isWarmupSet ? 0 : weight, reps, isPR, warmup: isWarmupSet });
-    if (isPR) haptic("success");
+    if (isPR) haptic("pr"); else haptic("medium");
 
     const realSetsLogged = (completed[ex.id] || []).filter((s) => !s.warmup).length + (isWarmupSet ? 0 : 1);
 
     if (!isWarmupSet && realSetsLogged >= ex.sets) {
-      goNextExercise();
+      haptic("exerciseDone");
+      markDoneAndAdvance();
     } else {
       if (!isWarmupSet) setSetIdx(setIdx + 1);
       if (reps >= ex.reps && !isWarmupSet && ex.kind !== "bodyweight") setWeight(weight + step);
@@ -290,12 +292,41 @@ function SessionRunner({ session, dayKey, deload, onExit }) {
     haptic("light");
     pushSet({ skipped: true });
     if (setIdx + 1 < ex.sets) setSetIdx(setIdx + 1);
-    else goNextExercise();
+    else markDoneAndAdvance();
+  };
+
+  // Mark current exercise done, then jump to the next NOT-yet-done exercise,
+  // wrapping around the list. Only finish when everything is done.
+  const markDoneAndAdvance = () => {
+    const nextDone = { ...doneExercises, [ex.id]: true };
+    setDoneExercises(nextDone);
+    advanceFrom(exIdx, nextDone);
+  };
+
+  const advanceFrom = (fromIdx, doneMap) => {
+    const n = exList.length;
+    for (let off = 1; off <= n; off++) {
+      const i = (fromIdx + off) % n;
+      if (!doneMap[exList[i].id]) {
+        setExIdx(i);
+        startRest(restTime);
+        return;
+      }
+    }
+    // Nothing left undone — everything complete
+    finishSession();
   };
 
   const goNextExercise = () => {
-    if (exIdx + 1 < exList.length) { setExIdx(exIdx + 1); startRest(restTime); }
-    else finishSession();
+    // Used by skip-exercise: move to next undone WITHOUT marking current done
+    const n = exList.length;
+    for (let off = 1; off <= n; off++) {
+      const i = (exIdx + off) % n;
+      if (!doneExercises[exList[i].id] && i !== exIdx) { setExIdx(i); startRest(restTime); return; }
+    }
+    // If only this one remains undone, just stay (let user finish or end manually)
+    const remaining = exList.filter((e) => !doneExercises[e.id] && e.id !== ex.id);
+    if (remaining.length === 0) requestEnd();
   };
 
   const skipExercise = () => { haptic("light"); goNextExercise(); };
@@ -318,6 +349,8 @@ function SessionRunner({ session, dayKey, deload, onExit }) {
     }
     setPaused(!paused);
   };
+
+  const requestEnd = () => { haptic("medium"); setResting(false); setConfirmEnd(true); };
 
   const finishSession = () => {
     setResting(false);
@@ -345,7 +378,7 @@ function SessionRunner({ session, dayKey, deload, onExit }) {
         </button>
         <div className="flex items-center gap-1">
           <button onClick={togglePause} className="p-2">{paused ? <Play className="w-4 h-4 text-gold" /> : <Pause className="w-4 h-4 text-ink-dim" />}</button>
-          <button onClick={finishSession} className="text-[11px] text-gold px-1">End</button>
+          <button onClick={requestEnd} className="text-[11px] text-gold px-1">End</button>
         </div>
       </div>
 
@@ -355,6 +388,23 @@ function SessionRunner({ session, dayKey, deload, onExit }) {
           <button key={e.id} onClick={() => { haptic("light"); setExIdx(i); }} className={`h-1.5 flex-1 rounded-full ${i < exIdx ? "bg-gold" : i === exIdx ? "bg-gold/50" : "bg-line"}`} />
         ))}
       </div>
+
+      {/* End confirmation overlay */}
+      <AnimatePresence>
+        {confirmEnd && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-bg/95 flex flex-col items-center justify-center px-8">
+            <p className="font-display text-2xl font-bold mb-2 text-center">End session?</p>
+            <p className="text-ink-dim text-sm mb-8 text-center">
+              {Object.keys(doneExercises).length} of {exList.length} exercises done.
+              {Object.keys(doneExercises).length < exList.length ? " You still have exercises left." : " Everything's done."}
+            </p>
+            <div className="flex gap-3 w-full max-w-[300px]">
+              <Button variant="ghost" className="flex-1" onClick={() => { haptic("light"); setConfirmEnd(false); }}>Keep going</Button>
+              <Button variant="danger" className="flex-1" onClick={() => { setConfirmEnd(false); finishSession(); }}>End now</Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Pause overlay */}
       <AnimatePresence>
@@ -383,11 +433,10 @@ function SessionRunner({ session, dayKey, deload, onExit }) {
         )}
       </AnimatePresence>
 
-      {/* Main */}
-      <div className="flex-1 flex flex-col justify-center px-5">
+      {/* Main — scrollable so nothing is cut off */}
+      <div className="flex-1 overflow-y-auto px-5 pb-32 pt-2">
         <motion.div key={exIdx} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-          <div className="flex justify-center mb-2"><MovementArt pattern={ex.pattern} /></div>
-          <div className="text-center mb-1"><Tag color="gold">{ex.muscle}</Tag></div>
+          <div className="text-center mb-1 mt-2"><Tag color="gold">{ex.muscle}</Tag></div>
           <h2 className="font-display text-2xl font-bold text-center leading-tight mb-1">{ex.name}</h2>
           <p className="text-center text-xs text-ink-dim mb-2">{ex.machine}</p>
 
@@ -454,18 +503,11 @@ function SessionRunner({ session, dayKey, deload, onExit }) {
         {showPlate && <Sheet open onClose={() => setShowPlate(false)} title="Plate Calculator"><PlateCalc target={weight} unit={store.units} /></Sheet>}
       </AnimatePresence>
 
-      {/* Swap */}
+      {/* Swap — same muscle, any exercise, or custom */}
       <AnimatePresence>
         {showSwap && (
           <Sheet open onClose={() => setShowSwap(false)} title="Swap exercise">
-            <div className="space-y-2">
-              <p className="text-xs text-ink-dim mb-2">Same muscle group. The swap logs under the new name.</p>
-              {(ex.alts || []).map((alt) => (
-                <Card key={alt} onClick={() => swapExercise(alt)} className="p-3 flex items-center justify-between">
-                  <span className="text-sm">{alt}</span><ArrowLeftRight className="w-4 h-4 text-ink-faint" />
-                </Card>
-              ))}
-            </div>
+            <ExerciseSwap ex={ex} onSwap={swapExercise} />
           </Sheet>
         )}
       </AnimatePresence>
@@ -502,10 +544,88 @@ function SessionRunner({ session, dayKey, deload, onExit }) {
   // local helpers for rest editor (declared after return via hoisting workaround)
 }
 
+function ExerciseSwap({ ex, onSwap }) {
+  const [tab, setTab] = useState("same"); // same | all | custom
+  const [q, setQ] = useState("");
+  const [custom, setCustom] = useState("");
+
+  // Build full exercise list across the whole program
+  const allEx = useMemo(() => {
+    const names = new Set();
+    Object.values(PROGRAM).forEach((s) => s.exercises.forEach((e) => names.add(e.name)));
+    return [...names].sort();
+  }, []);
+
+  const sameList = ex.alts || [];
+  const allFiltered = allEx.filter((n) => n !== ex.name && n.toLowerCase().includes(q.toLowerCase()));
+
+  return (
+    <div>
+      <div className="flex gap-2 mb-3">
+        {[["same", "Same muscle"], ["all", "All exercises"], ["custom", "Custom"]].map(([id, label]) => (
+          <button key={id} onClick={() => { haptic("light"); setTab(id); }}
+            className={`flex-1 py-2 rounded-btn text-xs font-medium border ${tab === id ? "bg-surface-2 border-gold/40 text-gold" : "border-line text-ink-dim"}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "same" && (
+        <div className="space-y-2">
+          {sameList.length === 0 && <p className="text-xs text-ink-dim">No preset alternatives. Try All exercises or Custom.</p>}
+          {sameList.map((alt) => (
+            <Card key={alt} onClick={() => onSwap(alt)} className="p-3 flex items-center justify-between">
+              <span className="text-sm">{alt}</span><ArrowLeftRight className="w-4 h-4 text-ink-faint" />
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {tab === "all" && (
+        <div>
+          <div className="flex items-center gap-2 bg-surface-2 rounded-btn px-3 py-2 mb-3">
+            <Search className="w-4 h-4 text-ink-faint" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search any exercise…" className="flex-1 bg-transparent text-sm outline-none" />
+          </div>
+          <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
+            {allFiltered.map((n) => (
+              <button key={n} onClick={() => onSwap(n)} className="w-full text-left p-2.5 rounded-btn bg-surface-2 flex items-center justify-between">
+                <span className="text-sm">{n}</span><ArrowLeftRight className="w-3.5 h-3.5 text-ink-faint" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tab === "custom" && (
+        <div>
+          <p className="text-xs text-ink-dim mb-2">Type any exercise name. You'll log sets, reps and weight normally.</p>
+          <input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="e.g. Smith Machine Press" className="w-full bg-surface-2 rounded-btn px-3 py-2.5 text-sm outline-none mb-3" />
+          <Button className="w-full" disabled={!custom.trim()} onClick={() => onSwap(custom.trim())}>Swap to this</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExerciseGif({ name }) {
+  const url = getExerciseGif(name); // sync — instant lookup, no fetch
+  if (!url) return null; // graceful: no image, just show text steps below
+  return (
+    <div className="mb-4 mx-auto w-full max-w-[260px]">
+      <div className="rounded-2xl overflow-hidden border-2 border-gold/40 bg-white">
+        <img src={url} alt={name} className="w-full h-auto block" loading="lazy"
+          onError={(e) => { e.currentTarget.parentElement.parentElement.style.display = "none"; }} />
+      </div>
+      <p className="text-[9px] text-ink-faint text-center mt-1">Demonstration · loops automatically</p>
+    </div>
+  );
+}
+
 function FormGuide({ ex, units }) {
   return (
     <div>
-      <div className="flex justify-center mb-4"><MovementArt pattern={ex.pattern} /></div>
+      <ExerciseGif name={ex.name} />
       <div className="mb-4">
         <p className="text-[11px] text-gold uppercase tracking-wide mb-2 font-semibold">Step by step</p>
         <div className="space-y-2">
@@ -622,7 +742,7 @@ function SessionComplete({ session, completed, durationMin, onExit }) {
         <input value={logWeight} onChange={(e) => setLogWeight(e.target.value)} type="number" inputMode="decimal" placeholder={`Body weight (${store.units})`} className="w-full bg-surface-2 rounded-btn px-3 py-2.5 text-sm outline-none" />
       </Card>
 
-      <Button className="w-full" onClick={save} disabled={saved}>{saved ? "Saved" : "Save & Finish"}</Button>
+      <Button className="w-full mb-8" onClick={save} disabled={saved}>{saved ? "Saved" : "Save & Finish"}</Button>
     </motion.div>
   );
 }

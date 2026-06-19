@@ -374,7 +374,191 @@ export const REST_DAY_TARGETS = { p: 145, c: 140, f: 60, fiber: 32, kcal: 1700 }
 
 export const DAY_KEYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-// Resolve the plan for a day, applying permanent meal overrides.
+// ── Per-component macros for accurate partial logging ──────────────────
+// Maps the macro-bearing parts of each meal to REAL macros (not proportional).
+// Keyed by meal id. Only the parts that carry meaningful macros are listed;
+// trivial items (spices, sauces, lemon) are grouped or omitted.
+// If a meal id isn't here, PartialLog falls back to an all-or-nothing toggle.
+export const MEAL_COMPONENTS = {
+  // Monday
+  "mon-b": [
+    { name: "2 whole eggs + 2 whites", p: 18, c: 1, f: 10, fiber: 0, kcal: 170 },
+    { name: "Ezekiel toast (1 slice)", p: 5, c: 15, f: 0.5, fiber: 3, kcal: 80 },
+    { name: "Veggies (spinach, onion, tomato)", p: 2, c: 6, f: 0, fiber: 1, kcal: 32 },
+    { name: "Cooking oil (1 tsp)", p: 0, c: 0, f: 4.5, fiber: 0, kcal: 40 },
+  ],
+  "mon-l": [
+    { name: "Chole filling", p: 15, c: 35, f: 5, fiber: 9, kcal: 250 },
+    { name: "Ezekiel bread (2 slices)", p: 10, c: 30, f: 1, fiber: 6, kcal: 160 },
+    { name: "Onion + cucumber", p: 1, c: 5, f: 0, fiber: 1, kcal: 24 },
+    { name: "Tamarind chutney", p: 0, c: 8, f: 0, fiber: 0, kcal: 32 },
+  ],
+  "mon-p": [
+    { name: "Fairlife Chocolate", p: 30, c: 4, f: 4.5, fiber: 1, kcal: 150 },
+    { name: "Banana", p: 1, c: 27, f: 0.3, fiber: 3, kcal: 105 },
+    { name: "Creatine (5g)", p: 0, c: 0, f: 0, fiber: 0, kcal: 0 },
+  ],
+  "mon-d": [
+    { name: "Paneer tikka (120g)", p: 22, c: 5, f: 18, fiber: 0, kcal: 265 },
+    { name: "Quinoa (1/2 cup)", p: 4, c: 19, f: 2, fiber: 2.5, kcal: 111 },
+    { name: "Greek yogurt marinade", p: 4, c: 2, f: 0, fiber: 0, kcal: 25 },
+    { name: "Bell pepper + onion", p: 1, c: 8, f: 0, fiber: 2, kcal: 36 },
+  ],
+  "mon-s": [
+    { name: "Greek yogurt (3/4 cup)", p: 17, c: 7, f: 4, fiber: 0, kcal: 128 },
+    { name: "Mixed berries", p: 0.5, c: 8, f: 0, fiber: 2, kcal: 35 },
+    { name: "Ground flax (1 tbsp)", p: 1.5, c: 1, f: 2, fiber: 2, kcal: 37 },
+  ],
+  // Tuesday
+  "tue-b": [
+    { name: "2 eggs", p: 12, c: 1, f: 10, fiber: 0, kcal: 144 },
+    { name: "Ezekiel bread (2 slices)", p: 10, c: 30, f: 1, fiber: 6, kcal: 160 },
+    { name: "Butter (1 tsp)", p: 0, c: 0, f: 4, fiber: 0, kcal: 36 },
+  ],
+  "tue-l": [
+    { name: "Chole tikki patties (2-3)", p: 12, c: 30, f: 6, fiber: 8, kcal: 230 },
+    { name: "Greek yogurt (dahi, 2 tbsp)", p: 3, c: 1, f: 1, fiber: 0, kcal: 25 },
+    { name: "Tamarind + mint chutney", p: 1, c: 10, f: 0, fiber: 1, kcal: 45 },
+    { name: "Onion + tomato", p: 1, c: 6, f: 0, fiber: 1, kcal: 28 },
+  ],
+  "tue-p": [
+    { name: "Orgain (1.5 scoops)", p: 31, c: 22, f: 6, fiber: 7, kcal: 225 },
+    { name: "Banana", p: 1, c: 27, f: 0.3, fiber: 3, kcal: 105 },
+  ],
+  "tue-d": [
+    { name: "Masoor dal (cooked, big bowl)", p: 18, c: 40, f: 1, fiber: 16, kcal: 230 },
+    { name: "Brown rice (1 cup)", p: 5, c: 45, f: 2, fiber: 4, kcal: 216 },
+    { name: "Tadka (1 tsp ghee/oil)", p: 0, c: 1, f: 4, fiber: 0, kcal: 40 },
+  ],
+  "tue-s": [
+    { name: "Greek yogurt (3/4 cup)", p: 17, c: 7, f: 4, fiber: 0, kcal: 128 },
+    { name: "Walnuts (7 halves)", p: 3, c: 2, f: 13, fiber: 1, kcal: 131 },
+  ],
+  // Wednesday
+  "wed-b": [
+    { name: "3 eggs (2 whole + 1 white)", p: 16, c: 1, f: 10, fiber: 0, kcal: 158 },
+    { name: "Ezekiel toast (1 slice)", p: 5, c: 15, f: 0.5, fiber: 3, kcal: 80 },
+    { name: "Mushroom + spinach", p: 2, c: 5, f: 0, fiber: 2, kcal: 28 },
+  ],
+  "wed-l": [
+    { name: "Paneer (100g)", p: 18, c: 4, f: 20, fiber: 0, kcal: 265 },
+    { name: "Frozen parantha", p: 4, c: 24, f: 7, fiber: 2, kcal: 170 },
+    { name: "Bell pepper + onion", p: 1, c: 8, f: 0, fiber: 2, kcal: 36 },
+    { name: "Schezwan sauce", p: 0, c: 5, f: 1, fiber: 0, kcal: 30 },
+  ],
+  "wed-p": [
+    { name: "Fairlife Chocolate", p: 30, c: 4, f: 4.5, fiber: 1, kcal: 150 },
+    { name: "Banana", p: 1, c: 27, f: 0.3, fiber: 3, kcal: 105 },
+  ],
+  "wed-d": [
+    { name: "Chole masala (1.5 cups)", p: 22, c: 48, f: 8, fiber: 14, kcal: 360 },
+    { name: "Quinoa (1/2 cup)", p: 4, c: 19, f: 2, fiber: 2.5, kcal: 111 },
+    { name: "Tamarind chutney", p: 0, c: 6, f: 0, fiber: 0, kcal: 24 },
+  ],
+  "wed-s": [
+    { name: "Greek yogurt (3/4 cup)", p: 17, c: 7, f: 4, fiber: 0, kcal: 128 },
+    { name: "Mixed berries", p: 0.5, c: 8, f: 0, fiber: 2, kcal: 35 },
+    { name: "Ground flax (1 tbsp)", p: 1.5, c: 1, f: 2, fiber: 2, kcal: 37 },
+  ],
+  // Thursday
+  "thu-b": [
+    { name: "3 boiled eggs", p: 18, c: 1.5, f: 15, fiber: 0, kcal: 216 },
+    { name: "Orgain (1 scoop)", p: 21, c: 15, f: 4, fiber: 5, kcal: 150 },
+  ],
+  "thu-l": [
+    { name: "Paneer tikka (100g)", p: 18, c: 4, f: 16, fiber: 0, kcal: 230 },
+    { name: "Frozen parantha", p: 4, c: 24, f: 7, fiber: 2, kcal: 170 },
+    { name: "Cucumber + bell pepper", p: 1, c: 5, f: 0, fiber: 1, kcal: 24 },
+    { name: "Mint chutney", p: 0, c: 3, f: 0, fiber: 1, kcal: 15 },
+  ],
+  "thu-p": [
+    { name: "Orgain (1.5 scoops)", p: 31, c: 22, f: 6, fiber: 7, kcal: 225 },
+    { name: "Banana", p: 1, c: 27, f: 0.3, fiber: 3, kcal: 105 },
+  ],
+  "thu-d": [
+    { name: "Paneer makhani (120g paneer)", p: 24, c: 12, f: 22, fiber: 2, kcal: 360 },
+    { name: "Ezekiel toast (1 slice)", p: 5, c: 15, f: 0.5, fiber: 3, kcal: 80 },
+    { name: "Greek yogurt (gravy base)", p: 3, c: 2, f: 1, fiber: 0, kcal: 25 },
+  ],
+  "thu-s": [
+    { name: "Greek yogurt (3/4 cup)", p: 17, c: 7, f: 4, fiber: 0, kcal: 128 },
+    { name: "Mixed berries", p: 1, c: 7, f: 0, fiber: 2, kcal: 35 },
+  ],
+  // Friday
+  "fri-b": [
+    { name: "2 eggs", p: 12, c: 1, f: 10, fiber: 0, kcal: 144 },
+    { name: "Ezekiel bread (2 slices)", p: 10, c: 30, f: 1, fiber: 6, kcal: 160 },
+    { name: "Orange", p: 1, c: 15, f: 0.2, fiber: 3, kcal: 62 },
+  ],
+  "fri-l": [
+    { name: "Chole tikki (2-3)", p: 12, c: 30, f: 6, fiber: 8, kcal: 230 },
+    { name: "Ezekiel bread (2 slices)", p: 10, c: 30, f: 1, fiber: 6, kcal: 160 },
+    { name: "Cucumber + veggies", p: 1, c: 5, f: 0, fiber: 2, kcal: 24 },
+  ],
+  "fri-p": [
+    { name: "Apple", p: 0.5, c: 25, f: 0.3, fiber: 4, kcal: 95 },
+    { name: "Almonds (10)", p: 3, c: 2, f: 6, fiber: 1.5, kcal: 70 },
+  ],
+  "fri-d": [
+    { name: "Paneer (120g)", p: 22, c: 5, f: 18, fiber: 0, kcal: 265 },
+    { name: "Quinoa (1/2 cup)", p: 4, c: 19, f: 2, fiber: 2.5, kcal: 111 },
+    { name: "Bell pepper + onion", p: 1, c: 8, f: 0, fiber: 2, kcal: 36 },
+    { name: "Schezwan + soy + sriracha", p: 0, c: 6, f: 1, fiber: 0, kcal: 35 },
+  ],
+  "fri-s": [
+    { name: "Greek yogurt (3/4 cup)", p: 17, c: 7, f: 4, fiber: 0, kcal: 128 },
+    { name: "Walnuts (7 halves)", p: 3, c: 2, f: 13, fiber: 1, kcal: 131 },
+  ],
+  // Saturday
+  "sat-b": [
+    { name: "3 eggs", p: 18, c: 1.5, f: 15, fiber: 0, kcal: 216 },
+    { name: "Ezekiel toast (1 slice)", p: 5, c: 15, f: 0.5, fiber: 3, kcal: 80 },
+    { name: "Cheese sprinkle", p: 4, c: 1, f: 5, fiber: 0, kcal: 60 },
+    { name: "Mixed fruit", p: 1, c: 20, f: 0, fiber: 3, kcal: 84 },
+  ],
+  "sat-l": [
+    { name: "Chana tikki (2-3)", p: 12, c: 30, f: 6, fiber: 8, kcal: 230 },
+    { name: "Cold chole", p: 8, c: 18, f: 2, fiber: 5, kcal: 130 },
+    { name: "Tamarind + mint chutney", p: 1, c: 10, f: 0, fiber: 1, kcal: 45 },
+    { name: "Onion + tomato + cucumber", p: 1, c: 7, f: 0, fiber: 2, kcal: 32 },
+  ],
+  "sat-p": [
+    { name: "Fairlife Chocolate", p: 30, c: 4, f: 4.5, fiber: 1, kcal: 150 },
+    { name: "Banana", p: 1, c: 27, f: 0.3, fiber: 3, kcal: 105 },
+  ],
+  "sat-s": [
+    { name: "Greek yogurt (1/2 cup)", p: 12, c: 6, f: 3, fiber: 0, kcal: 99 },
+  ],
+  // Sunday
+  "sun-b": [
+    { name: "2 eggs", p: 12, c: 1, f: 10, fiber: 0, kcal: 144 },
+    { name: "Ezekiel bread (2 slices)", p: 10, c: 30, f: 1, fiber: 6, kcal: 160 },
+    { name: "Banana", p: 1, c: 27, f: 0.3, fiber: 3, kcal: 105 },
+  ],
+  "sun-l": [
+    { name: "Greek yogurt (1 cup)", p: 23, c: 9, f: 5, fiber: 0, kcal: 170 },
+    { name: "Banana + berries", p: 1.5, c: 35, f: 0.3, fiber: 5, kcal: 140 },
+    { name: "Almonds (10) + flax", p: 4.5, c: 3, f: 8, fiber: 3.5, kcal: 107 },
+    { name: "Orgain (1/2 scoop)", p: 10, c: 7, f: 2, fiber: 2.5, kcal: 75 },
+  ],
+  "sun-d": [
+    { name: "Paneer tikka (120g)", p: 22, c: 5, f: 18, fiber: 0, kcal: 265 },
+    { name: "Quinoa (1/2 cup)", p: 4, c: 19, f: 2, fiber: 2.5, kcal: 111 },
+    { name: "Broccoli + bell pepper", p: 4, c: 12, f: 0, fiber: 5, kcal: 64 },
+  ],
+  "sun-s": [
+    { name: "Greek yogurt (3/4 cup)", p: 17, c: 7, f: 4, fiber: 0, kcal: 128 },
+    { name: "Mixed berries", p: 0.5, c: 8, f: 0, fiber: 2, kcal: 35 },
+    { name: "Ground flax (1 tbsp)", p: 1.5, c: 1, f: 2, fiber: 2, kcal: 37 },
+  ],
+};
+
+// Returns component list for a meal, or null if not broken down.
+export function mealComponents(mealId) {
+  return MEAL_COMPONENTS[mealId] || null;
+}
+
+
 // overrides keyed as `${dayKey}-${slot}`, value is a full meal object.
 export function resolveDayPlan(dayKey, mealOverrides = {}) {
   const base = MEAL_PLAN[dayKey] || [];

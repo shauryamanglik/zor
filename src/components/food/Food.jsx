@@ -3,7 +3,7 @@ import { AnimatePresence } from "framer-motion";
 import { Check, RefreshCw, Plus, ChevronRight, ShoppingCart, ClipboardList, Search, BookOpen, Ban, Coffee, UtensilsCrossed, X, Clock } from "lucide-react";
 import { useStore } from "../../hooks/useStore";
 import { Card, Pill as Tag, Button, Sheet, Stepper } from "../shared/UI";
-import { resolveDayPlan, targetsForDay, mealsForSlot, STAPLES, DRINKS, DAY_KEYS } from "../../data/meals";
+import { resolveDayPlan, targetsForDay, mealsForSlot, STAPLES, DRINKS, DAY_KEYS, mealComponents, SUBSTITUTIONS, MEAL_PLAN } from "../../data/meals";
 import { PREP_TASKS } from "../../data/workouts";
 import { sumMacros, todayKey, haptic, todayISO } from "../../lib/utils";
 
@@ -229,14 +229,49 @@ function RecipeView({ meal }) {
 }
 
 function SwapView({ meal, bannedIds, onPickOnce, onPickPermanent }) {
-  const alts = mealsForSlot(meal.slot, bannedIds).filter((a) => a.id !== meal.id);
+  const [scope, setScope] = useState("slot"); // slot | all
+  const [q, setQ] = useState("");
+
+  const sameSlot = mealsForSlot(meal.slot, bannedIds).filter((a) => a.id !== meal.id);
+
+  // All meals across every slot, deduped by name, minus banned and cheat/rest
+  const allMeals = useMemo(() => {
+    const out = [];
+    Object.values(MEAL_PLAN).forEach((day) =>
+      day.forEach((m) => {
+        if (!m.isCheat && !m.isRest && m.id !== meal.id && !bannedIds.includes(m.id) && !out.find((x) => x.name === m.name)) out.push(m);
+      })
+    );
+    return out;
+  }, [meal.id, bannedIds]);
+
+  const list = (scope === "slot" ? sameSlot : allMeals).filter((a) => a.name.toLowerCase().includes(q.toLowerCase()));
+
   return (
     <div className="space-y-2">
-      <p className="text-xs text-ink-dim mb-2">Swap {meal.slot}. "Just today" logs it now. "Always" replaces it permanently in your plan.</p>
-      {alts.map((a) => (
+      <p className="text-xs text-ink-dim mb-1">Swap {meal.slot}. "Just today" logs it now. "Always" replaces it permanently.</p>
+      <div className="flex gap-2 mb-2">
+        <button onClick={() => { haptic("light"); setScope("slot"); }} className={`flex-1 py-2 rounded-btn text-xs font-medium border ${scope === "slot" ? "bg-surface-2 border-gold/40 text-gold" : "border-line text-ink-dim"}`}>Same slot</button>
+        <button onClick={() => { haptic("light"); setScope("all"); }} className={`flex-1 py-2 rounded-btn text-xs font-medium border ${scope === "all" ? "bg-surface-2 border-gold/40 text-gold" : "border-line text-ink-dim"}`}>Any meal</button>
+      </div>
+      {scope === "all" && (
+        <div className="flex items-center gap-2 bg-surface-2 rounded-btn px-3 py-2 mb-1">
+          <Search className="w-4 h-4 text-ink-faint" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search any meal…" className="flex-1 bg-transparent text-sm outline-none" />
+        </div>
+      )}
+      {list.map((a) => (
         <Card key={a.id} className="p-3">
           <div className="flex items-center justify-between mb-2">
-            <div><p className="text-sm font-medium">{a.name}</p><div className="flex gap-2 mt-1"><span className="text-[11px] text-gold tabular">{a.macros.p}P</span><span className="text-[11px] text-ink-dim tabular">{a.macros.c}C</span><span className="text-[11px] text-ink-dim tabular">{a.macros.kcal} kcal</span></div></div>
+            <div>
+              <p className="text-sm font-medium">{a.name}</p>
+              <div className="flex gap-2 mt-1">
+                <span className="text-[10px] text-ink-faint uppercase">{a.slot}</span>
+                <span className="text-[11px] text-gold tabular">{a.macros.p}P</span>
+                <span className="text-[11px] text-ink-dim tabular">{a.macros.c}C</span>
+                <span className="text-[11px] text-ink-dim tabular">{a.macros.kcal} kcal</span>
+              </div>
+            </div>
           </div>
           <div className="flex gap-2">
             <button onClick={() => onPickOnce(a)} className="flex-1 text-[11px] text-gold border border-gold/30 rounded-btn py-1.5">Just today</button>
@@ -244,33 +279,65 @@ function SwapView({ meal, bannedIds, onPickOnce, onPickPermanent }) {
           </div>
         </Card>
       ))}
+      {list.length === 0 && <p className="text-xs text-ink-faint text-center py-4">No matches.</p>}
     </div>
   );
 }
 
 function PartialLog({ meal, onLog }) {
-  const [included, setIncluded] = useState(meal.ingredients?.reduce((a, i) => ({ ...a, [i]: true }), {}) || {});
-  const ingredients = meal.ingredients || [];
-  const ratio = ingredients.length ? Object.values(included).filter(Boolean).length / ingredients.length : 1;
-  const adj = { p: Math.round(meal.macros.p * ratio), c: Math.round(meal.macros.c * ratio), f: Math.round(meal.macros.f * ratio), fiber: Math.round((meal.macros.fiber || 0) * ratio), kcal: Math.round(meal.macros.kcal * ratio) };
+  const components = mealComponents(meal.id);
+
+  // Fallback: meal has no component breakdown — simple all-or-nothing per ingredient (proportional, labeled honestly)
+  if (!components) {
+    const ingredients = meal.ingredients || [];
+    const [inc, setInc] = useState(ingredients.reduce((a, i) => ({ ...a, [i]: true }), {}));
+    const ratio = ingredients.length ? Object.values(inc).filter(Boolean).length / ingredients.length : 1;
+    const adj = { p: Math.round(meal.macros.p * ratio), c: Math.round(meal.macros.c * ratio), f: Math.round(meal.macros.f * ratio), fiber: Math.round((meal.macros.fiber || 0) * ratio), kcal: Math.round(meal.macros.kcal * ratio) };
+    return (
+      <div>
+        <p className="text-xs text-ink-dim mb-3">Uncheck what you skipped (rough estimate for this meal).</p>
+        <div className="space-y-1.5 mb-4">
+          {ingredients.map((i) => (
+            <button key={i} onClick={() => setInc((s) => ({ ...s, [i]: !s[i] }))} className="w-full flex items-center justify-between p-2.5 rounded-btn bg-surface-2">
+              <span className={`text-sm ${inc[i] ? "" : "text-ink-faint line-through"}`}>{i}</span>
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${inc[i] ? "bg-gold border-gold" : "border-line"}`}>{inc[i] && <Check className="w-3 h-3 text-bg" strokeWidth={3} />}</div>
+            </button>
+          ))}
+        </div>
+        <Button className="w-full" onClick={() => onLog(adj, "partial")}>Log this</Button>
+      </div>
+    );
+  }
+
+  // Accurate path: each component carries its own real macros. Sum only what's checked.
+  const [inc, setInc] = useState(components.reduce((a, _, idx) => ({ ...a, [idx]: true }), {}));
+  const total = components.reduce((acc, c, idx) => {
+    if (!inc[idx]) return acc;
+    return { p: acc.p + c.p, c: acc.c + c.c, f: acc.f + c.f, fiber: acc.fiber + (c.fiber || 0), kcal: acc.kcal + c.kcal };
+  }, { p: 0, c: 0, f: 0, fiber: 0, kcal: 0 });
+  const r = (n) => Math.round(n);
+
   return (
     <div>
-      <p className="text-xs text-ink-dim mb-3">Uncheck what you skipped. Macros adjust proportionally (rough estimate).</p>
+      <p className="text-xs text-ink-dim mb-3">Check exactly what you ate. Each part keeps its own real macros — no proportional guessing.</p>
       <div className="space-y-1.5 mb-4">
-        {ingredients.map((i) => (
-          <button key={i} onClick={() => setIncluded((s) => ({ ...s, [i]: !s[i] }))} className="w-full flex items-center justify-between p-2.5 rounded-btn bg-surface-2">
-            <span className={`text-sm ${included[i] ? "" : "text-ink-faint line-through"}`}>{i}</span>
-            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${included[i] ? "bg-gold border-gold" : "border-line"}`}>{included[i] && <Check className="w-3 h-3 text-bg" strokeWidth={3} />}</div>
+        {components.map((c, idx) => (
+          <button key={idx} onClick={() => { haptic("light"); setInc((s) => ({ ...s, [idx]: !s[idx] })); }} className="w-full flex items-center justify-between p-2.5 rounded-btn bg-surface-2">
+            <div className="text-left">
+              <span className={`text-sm ${inc[idx] ? "" : "text-ink-faint line-through"}`}>{c.name}</span>
+              <span className="text-[10px] text-ink-dim block">{c.p}P · {c.c}C · {c.f}F · {c.kcal}kcal</span>
+            </div>
+            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${inc[idx] ? "bg-gold border-gold" : "border-line"}`}>{inc[idx] && <Check className="w-3 h-3 text-bg" strokeWidth={3} />}</div>
           </button>
         ))}
       </div>
       <div className="grid grid-cols-4 gap-2 text-center mb-4">
-        <div><p className="font-display font-bold text-gold tabular">{adj.p}</p><p className="text-[9px] text-ink-dim">Protein</p></div>
-        <div><p className="font-display font-bold tabular">{adj.c}</p><p className="text-[9px] text-ink-dim">Carbs</p></div>
-        <div><p className="font-display font-bold tabular">{adj.f}</p><p className="text-[9px] text-ink-dim">Fat</p></div>
-        <div><p className="font-display font-bold tabular">{adj.kcal}</p><p className="text-[9px] text-ink-dim">Kcal</p></div>
+        <div><p className="font-display font-bold text-gold tabular">{r(total.p)}</p><p className="text-[9px] text-ink-dim">Protein</p></div>
+        <div><p className="font-display font-bold tabular">{r(total.c)}</p><p className="text-[9px] text-ink-dim">Carbs</p></div>
+        <div><p className="font-display font-bold tabular">{r(total.f)}</p><p className="text-[9px] text-ink-dim">Fat</p></div>
+        <div><p className="font-display font-bold tabular">{r(total.kcal)}</p><p className="text-[9px] text-ink-dim">Kcal</p></div>
       </div>
-      <Button className="w-full" onClick={() => onLog(adj, "partial")}>Log {Math.round(ratio * 100)}% of meal</Button>
+      <Button className="w-full" onClick={() => onLog({ p: r(total.p), c: r(total.c), f: r(total.f), fiber: r(total.fiber), kcal: r(total.kcal) }, "adjusted")}>Log what I ate</Button>
     </div>
   );
 }
