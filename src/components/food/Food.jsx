@@ -1,11 +1,33 @@
 import { useState, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Check, RefreshCw, Plus, ChevronRight, ShoppingCart, ClipboardList, Search, BookOpen, Ban, Coffee, UtensilsCrossed, X, Clock } from "lucide-react";
+import { Check, RefreshCw, Plus, ChevronRight, ShoppingCart, ClipboardList, Search, BookOpen, Ban, Coffee, UtensilsCrossed, X, Clock, Apple, Minus } from "lucide-react";
 import { useStore } from "../../hooks/useStore";
 import { Card, Pill as Tag, Button, Sheet, Stepper } from "../shared/UI";
 import { resolveDayPlan, targetsForDay, mealsForSlot, STAPLES, DRINKS, DAY_KEYS, mealComponents, SUBSTITUTIONS, MEAL_PLAN } from "../../data/meals";
+import { QUICK_CATEGORIES, QUICK_FOODS, SIZE_PRESETS, DRINK_VESSELS, searchQuickFoods, computeQuickMacros } from "../../data/quickfoods";
 import { PREP_TASKS } from "../../data/workouts";
 import { sumMacros, todayKey, haptic, todayISO } from "../../lib/utils";
+
+// Map the current clock time to the most sensible meal slot for an extra.
+function slotForNow(d = new Date()) {
+  const h = d.getHours();
+  if (h < 10) return "Breakfast";
+  if (h < 12) return "Snack";
+  if (h < 15) return "Lunch";
+  if (h < 17) return "Pre-gym";
+  if (h < 19) return "Snack";
+  if (h < 22) return "Dinner";
+  return "Snack";
+}
+
+// Weighted distance between two macro profiles. Protein matters most, then
+// calories, then carbs/fat. Lower is closer.
+function macroDist(a, t) {
+  return Math.abs((a.p || 0) - (t.p || 0)) * 3
+    + Math.abs((a.kcal || 0) - (t.kcal || 0)) * 0.1
+    + Math.abs((a.c || 0) - (t.c || 0))
+    + Math.abs((a.f || 0) - (t.f || 0));
+}
 
 export default function Food() {
   const store = useStore();
@@ -16,6 +38,7 @@ export default function Food() {
   const [customSlot, setCustomSlot] = useState(null);
   const [partialMeal, setPartialMeal] = useState(null);
   const [cheatMeal, setCheatMeal] = useState(null);
+  const [quickAdd, setQuickAdd] = useState(false);
 
   const plan = resolveDayPlan(day, store.mealOverrides);
   const targets = targetsForDay(day, store.targets);
@@ -47,19 +70,32 @@ export default function Food() {
 
           <div className="space-y-2.5">
             {plan.map((m) => {
-              const logged = loggedForDay.find((x) => x.slot === m.slot);
+              const logged = loggedForDay.find((x) => x.slot === m.slot && !x.extraId);
+              const slotExtras = loggedForDay.filter((x) => x.slot === m.slot && x.extraId);
               return (
-                <MealCard
-                  key={m.id} meal={m} logged={logged} isToday={isToday}
-                  onLog={() => { haptic("success"); store.logMeal(m); }}
-                  onUnlog={() => { haptic("light"); store.unlogMeal(selectedDate, m.slot); }}
-                  onSwap={() => setSwapMeal(m)}
-                  onRecipe={() => setRecipeMeal(m)}
-                  onCustom={() => setCustomSlot(m.slot)}
-                  onPartial={() => setPartialMeal(m)}
-                  onCheat={() => setCheatMeal(m)}
-                  onBan={() => { haptic("medium"); store.banMeal(m.id); }}
-                />
+                <div key={m.id}>
+                  <MealCard
+                    meal={m} logged={logged} isToday={isToday}
+                    onLog={() => { haptic("success"); store.logMeal(m); }}
+                    onUnlog={() => { haptic("light"); store.unlogMeal(selectedDate, m.slot); }}
+                    onSwap={() => setSwapMeal(m)}
+                    onRecipe={() => setRecipeMeal(m)}
+                    onCustom={() => setCustomSlot(m.slot)}
+                    onPartial={() => setPartialMeal(m)}
+                    onCheat={() => setCheatMeal(m)}
+                    onBan={() => { haptic("medium"); store.banMeal(m.id); }}
+                  />
+                  {slotExtras.map((x) => (
+                    <div key={x.extraId} className="flex items-center gap-2 mt-1.5 ml-3 pl-3 border-l-2 border-gold/30">
+                      <Apple className="w-3.5 h-3.5 text-gold flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] text-ink truncate">{x.meal}</p>
+                        <p className="text-[9px] text-ink-dim">{x.time ? x.time + " · " : ""}{Math.round(x.kcal)} kcal · {x.protein}p</p>
+                      </div>
+                      <button onClick={() => { haptic("light"); store.unlogExtra(x.extraId, selectedDate); }} className="p-1 text-ink-faint active:text-danger"><X className="w-3.5 h-3.5" /></button>
+                    </div>
+                  ))}
+                </div>
               );
             })}
           </div>
@@ -106,7 +142,28 @@ export default function Food() {
             <CustomLog onLog={(name, macros) => { haptic("success"); store.logCustomMeal(customSlot, name, macros); setCustomSlot(null); }} recentMeals={recentCustom(store.meals)} />
           </Sheet>
         )}
+        {quickAdd && (
+          <Sheet open onClose={() => setQuickAdd(false)} title="Quick add">
+            <QuickAdd onLog={(slot, name, macros) => {
+              haptic("success");
+              store.logExtra(slot, name, macros);
+              setQuickAdd(false);
+            }} />
+          </Sheet>
+        )}
       </AnimatePresence>
+
+      {/* Floating quick-add button: log a fruit, snack or drink anytime */}
+      {view === "plan" && (
+        <button
+          onClick={() => { haptic("light"); setQuickAdd(true); }}
+          className="fixed right-4 bottom-24 z-30 w-14 h-14 rounded-full bg-gold text-bg shadow-lg flex items-center justify-center active:scale-90 transition"
+          style={{ boxShadow: "0 6px 20px rgba(201,168,76,0.4)" }}
+          aria-label="Quick add food"
+        >
+          <Apple className="w-6 h-6" strokeWidth={2.2} />
+        </button>
+      )}
     </div>
   );
 }
@@ -231,6 +288,7 @@ function RecipeView({ meal }) {
 function SwapView({ meal, bannedIds, onPickOnce, onPickPermanent }) {
   const [scope, setScope] = useState("slot"); // slot | all
   const [q, setQ] = useState("");
+  const [sortByMacros, setSortByMacros] = useState(false);
 
   const sameSlot = mealsForSlot(meal.slot, bannedIds).filter((a) => a.id !== meal.id);
 
@@ -245,7 +303,14 @@ function SwapView({ meal, bannedIds, onPickOnce, onPickPermanent }) {
     return out;
   }, [meal.id, bannedIds]);
 
-  const list = (scope === "slot" ? sameSlot : allMeals).filter((a) => a.name.toLowerCase().includes(q.toLowerCase()));
+  const list = useMemo(() => {
+    let base = (scope === "slot" ? sameSlot : allMeals).filter((a) => a.name.toLowerCase().includes(q.toLowerCase()));
+    if (sortByMacros) {
+      const t = meal.macros;
+      base = [...base].sort((a, b) => macroDist(a.macros, t) - macroDist(b.macros, t));
+    }
+    return base;
+  }, [scope, sameSlot, allMeals, q, sortByMacros, meal.macros]);
 
   return (
     <div className="space-y-2">
@@ -254,6 +319,9 @@ function SwapView({ meal, bannedIds, onPickOnce, onPickPermanent }) {
         <button onClick={() => { haptic("light"); setScope("slot"); }} className={`flex-1 py-2 rounded-btn text-xs font-medium border ${scope === "slot" ? "bg-surface-2 border-gold/40 text-gold" : "border-line text-ink-dim"}`}>Same slot</button>
         <button onClick={() => { haptic("light"); setScope("all"); }} className={`flex-1 py-2 rounded-btn text-xs font-medium border ${scope === "all" ? "bg-surface-2 border-gold/40 text-gold" : "border-line text-ink-dim"}`}>Any meal</button>
       </div>
+      <button onClick={() => { haptic("light"); setSortByMacros(!sortByMacros); }} className={`w-full py-2 rounded-btn text-[11px] font-medium border mb-1 ${sortByMacros ? "bg-surface-2 border-gold/40 text-gold" : "border-line text-ink-dim"}`}>
+        {sortByMacros ? "✓ Sorted by closest macros" : "Sort by closest macros"}
+      </button>
       {scope === "all" && (
         <div className="flex items-center gap-2 bg-surface-2 rounded-btn px-3 py-2 mb-1">
           <Search className="w-4 h-4 text-ink-faint" />
@@ -532,6 +600,146 @@ function Prep() {
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+// ── Quick Add: log a fruit, snack, drink, or extra with smart quantity ──
+function QuickAdd({ onLog }) {
+  const [cat, setCat] = useState("all");
+  const [q, setQ] = useState("");
+  const [selected, setSelected] = useState(null);
+
+  const results = useMemo(() => searchQuickFoods(q, cat), [q, cat]);
+
+  if (selected) {
+    return <QuickAddDetail food={selected} onBack={() => setSelected(null)} onLog={onLog} />;
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 bg-surface-2 rounded-btn px-3 py-2 mb-3">
+        <Search className="w-4 h-4 text-ink-faint" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search fruit, snack, drink..." className="flex-1 bg-transparent text-sm outline-none" autoFocus />
+      </div>
+
+      {!q.trim() && (
+        <div className="flex gap-1.5 overflow-x-auto pb-2 mb-3">
+          {[{ id: "all", label: "All" }, ...QUICK_CATEGORIES].map((c) => (
+            <button key={c.id} onClick={() => { haptic("light"); setCat(c.id); }} className={`text-[11px] whitespace-nowrap px-3 py-1.5 rounded-btn border ${cat === c.id ? "bg-surface-2 border-gold/40 text-gold" : "border-line text-ink-dim"}`}>{c.label}</button>
+          ))}
+        </div>
+      )}
+
+      <p className="text-[10px] text-ink-faint mb-2">Lands in the slot that matches the time you log it. You can change it before saving.</p>
+
+      <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
+        {results.map((f) => (
+          <button key={f.id} onClick={() => { haptic("light"); setSelected(f); }} className="w-full text-left p-3 rounded-btn bg-surface-2 flex items-center justify-between">
+            <div>
+              <p className="text-sm">{f.name}</p>
+              <p className="text-[10px] text-ink-dim">{f.macros.kcal} kcal · {f.macros.p}p / {f.macros.c}c / {f.macros.f}f per {f.unit}</p>
+            </div>
+            <Plus className="w-4 h-4 text-gold flex-shrink-0" />
+          </button>
+        ))}
+        {results.length === 0 && <p className="text-xs text-ink-dim text-center py-6">No matches. Try the Custom tab on a meal to log anything by hand.</p>}
+      </div>
+    </div>
+  );
+}
+
+function QuickAddDetail({ food, onBack, onLog }) {
+  const [count, setCount] = useState(1);
+  const [sizeId, setSizeId] = useState(() => {
+    if (food.unitType === "size") return (SIZE_PRESETS[food.sizeSet] || SIZE_PRESETS.default)[1].id;
+    if (food.unitType === "glass") return DRINK_VESSELS[0].id;
+    if (food.unitType === "count" && food.sizeSet) return (SIZE_PRESETS[food.sizeSet])[1].id;
+    return null;
+  });
+  const [zeroSugar, setZeroSugar] = useState(!!food.homemadeSweet);
+  const [slot, setSlot] = useState(slotForNow());
+
+  // Resolve the active size multiplier.
+  let sizeMult = 1;
+  let sizeOptions = null;
+  if (food.unitType === "size") { sizeOptions = SIZE_PRESETS[food.sizeSet] || SIZE_PRESETS.default; sizeMult = sizeOptions.find((s) => s.id === sizeId)?.mult ?? 1; }
+  else if (food.unitType === "glass") { sizeOptions = DRINK_VESSELS; sizeMult = DRINK_VESSELS.find((s) => s.id === sizeId)?.mult ?? 1; }
+  else if (food.unitType === "count" && food.sizeSet) { sizeOptions = SIZE_PRESETS[food.sizeSet]; sizeMult = sizeOptions.find((s) => s.id === sizeId)?.mult ?? 1; }
+
+  const macros = computeQuickMacros(food, count, sizeMult, zeroSugar);
+  const countStep = food.unitType === "serving" ? 0.5 : 1;
+
+  const SLOTS = ["Breakfast", "Lunch", "Pre-gym", "Dinner", "Snack"];
+
+  // Build a readable logged name, e.g. "2 plums (large)" or "Lemonade (glass)".
+  const sizeLabel = sizeOptions?.find((s) => s.id === sizeId)?.label;
+  const name = (() => {
+    const base = food.name;
+    const qtyTxt = food.unitType === "count" ? `${count} ${count === 1 ? food.unit : food.unit + "s"}` : `${count}× ${food.unit}`;
+    const extras = [];
+    if (sizeLabel && food.unitType !== "count") extras.push(sizeLabel);
+    if (sizeLabel && food.unitType === "count") extras.push(sizeLabel);
+    if (zeroSugar && food.homemadeSweet) extras.push("monk fruit");
+    return `${base} · ${qtyTxt}${extras.length ? ` (${extras.join(", ")})` : ""}`;
+  })();
+
+  return (
+    <div>
+      <button onClick={onBack} className="text-[11px] text-gold mb-3 flex items-center gap-1"><ChevronRight className="w-3.5 h-3.5 rotate-180" /> Back to search</button>
+
+      <p className="font-display text-lg font-semibold mb-1">{food.name}</p>
+      <p className="text-[11px] text-ink-dim mb-4">Per {food.unit}: {food.macros.kcal} kcal · {food.macros.p}p / {food.macros.c}c / {food.macros.f}f</p>
+
+      {/* Quantity */}
+      <p className="text-center text-[10px] text-ink-dim uppercase tracking-wide mb-1">
+        {food.unitType === "count" ? `How many ${food.unit}s?` : "Quantity"}
+      </p>
+      <Stepper value={count} onChange={(v) => setCount(Math.max(countStep, v))} step={countStep} suffix={food.unitType === "count" ? food.unit + (count === 1 ? "" : "s") : food.unit} />
+
+      {/* Size / vessel options */}
+      {sizeOptions && (
+        <div className="mt-4">
+          <p className="text-[10px] text-ink-dim uppercase tracking-wide mb-2">{food.unitType === "glass" ? "Vessel" : "Size"}</p>
+          <div className="flex gap-2 flex-wrap">
+            {sizeOptions.map((s) => (
+              <button key={s.id} onClick={() => { haptic("light"); setSizeId(s.id); }} className={`text-xs px-3 py-2 rounded-btn border ${sizeId === s.id ? "bg-surface-2 border-gold/40 text-gold" : "border-line text-ink-dim"}`}>{s.label}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Homemade zero-sugar toggle */}
+      {food.homemadeSweet && (
+        <button onClick={() => { haptic("light"); setZeroSugar(!zeroSugar); }} className="flex items-center gap-2 w-full mt-4 text-[11px] text-ink-dim">
+          <div className={`w-4 h-4 rounded border flex items-center justify-center ${zeroSugar ? "bg-gold border-gold" : "border-line"}`}>{zeroSugar && <Check className="w-3 h-3 text-bg" strokeWidth={3} />}</div>
+          Made at home with monk fruit / erythritol (no sugar)
+        </button>
+      )}
+
+      {/* Slot picker */}
+      <div className="mt-4">
+        <p className="text-[10px] text-ink-dim uppercase tracking-wide mb-2 flex items-center gap-1"><Clock className="w-3 h-3" /> Log to</p>
+        <div className="flex gap-1.5 flex-wrap">
+          {SLOTS.map((s) => (
+            <button key={s} onClick={() => { haptic("light"); setSlot(s); }} className={`text-[11px] px-3 py-1.5 rounded-btn border ${slot === s ? "bg-surface-2 border-gold/40 text-gold" : "border-line text-ink-dim"}`}>{s}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Macro preview */}
+      <div className="grid grid-cols-4 gap-2 mt-5 mb-4">
+        {[["P", macros.p], ["C", macros.c], ["F", macros.f], ["kcal", macros.kcal]].map(([l, v]) => (
+          <div key={l} className="bg-surface-2 rounded-btn py-2 text-center">
+            <p className="font-display font-bold text-gold tabular text-sm">{v}</p>
+            <p className="text-[9px] text-ink-dim">{l}</p>
+          </div>
+        ))}
+      </div>
+
+      <Button className="w-full" onClick={() => onLog(slot, name, macros)}>
+        Log to {slot}
+      </Button>
     </div>
   );
 }

@@ -235,13 +235,14 @@ export const MEAL_PLAN = {
     },
     {
       slot: "Lunch", id: "sat-l", name: "Chole Chaat Plate (upgraded, no cook)",
-      macros: { p: 26, c: 48, f: 9, fiber: 12, kcal: 366 }, veg: "Onion, tomato, cucumber",
-      ingredients: ["Cold Sunday chole", "Tamarind chutney", "Mint chutney", "Onion", "Tomato", "Cucumber", "Chaat masala", "Lemon", "Sev (optional)"],
+      macros: { p: 33, c: 51, f: 11, fiber: 12, kcal: 425 }, veg: "Onion, tomato, cucumber",
+      ingredients: ["Cold Sunday chole", "Greek yogurt (dahi-style)", "Tamarind chutney", "Mint chutney", "Onion", "Tomato", "Cucumber", "Chaat masala", "Lemon", "Sev (optional)"],
       recipe: [
         "Cold Sunday chole in a bowl (no heating).",
         "Top with onion + tomato + cucumber.",
+        "Add a generous dollop of Greek yogurt for dahi-chaat creaminess and a protein bump.",
         "Drizzle tamarind + mint chutney generously, chaat masala, big squeeze lemon.",
-        "Optional crunch: sprinkle sev. The upgraded version of the boring one — now tastes like street chaat. 2 min.",
+        "Optional crunch: sprinkle sev. The upgraded version of the boring one, now tastes like street dahi chaat. 2 min.",
       ],
     },
     {

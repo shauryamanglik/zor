@@ -26,8 +26,8 @@ export function haptic(type = "light") {
     medium: 18,
     heavy: [25, 30, 25],
     success: [12, 40, 12],
-    pr: [15, 50, 15, 50, 40],        // triple-pulse, distinct and satisfying
-    exerciseDone: [20, 40, 20],       // double buzz
+    pr: [15, 50, 15, 50, 40],
+    exerciseDone: [20, 40, 20],
     warn: [10, 30, 10],
   };
   navigator.vibrate(map[type] || 8);
@@ -51,11 +51,39 @@ export function epley1rm(weight, reps) {
   return Math.round(weight * (1 + reps / 30));
 }
 
+// ── Unit conversion ──────────────────────────────────────────────────
+const LB_PER_KG = 2.2046226218;
+
 export function lbsToKg(lbs) {
-  return Math.round(lbs * 0.4536 * 10) / 10;
+  return Math.round((lbs / LB_PER_KG) * 10) / 10;
 }
 export function kgToLbs(kg) {
-  return Math.round(kg / 0.4536);
+  return Math.round(kg * LB_PER_KG);
+}
+
+// Convert a stored value (always kept in lbs internally) to the display unit.
+export function toDisplayWeight(lbs, units) {
+  if (units === "kg") return lbsToKg(lbs);
+  return Math.round(lbs);
+}
+// Convert a display-unit value back to lbs for storage.
+export function toStoredWeight(val, units) {
+  if (units === "kg") return kgToLbs(val);
+  return Math.round(val);
+}
+
+// The natural increment for a movement, expressed in the DISPLAY unit.
+// lbs: compound +5, isolation +2.5, micro +1.
+// kg:  compound +2.5, isolation +1.25, micro +0.5 - the real plate jumps.
+export function weightStep(kind, units) {
+  if (units === "kg") {
+    if (kind === "compound") return 2.5;
+    if (kind === "isolation") return 1.25;
+    return 0.5;
+  }
+  if (kind === "compound") return 5;
+  if (kind === "isolation") return 2.5;
+  return 1;
 }
 
 export function isRestDay(dayKey) {
@@ -70,16 +98,13 @@ export function targetsForDay(base, dayKey) {
   return { ...base, c: Math.round(base.c * 1.14), kcal: base.kcal + 100 };
 }
 
-// Smart progressive overload using last few sessions of an exercise.
-// history = array of {weight, reps, date} for one exercise, newest last.
 export function overloadAdvice(history, targetReps, kind) {
   if (!history || !history.length) return null;
   const last = history[history.length - 1];
   const daysSince = (Date.now() - new Date(last.date).getTime()) / 86400000;
   if (daysSince > 10) {
-    return { msg: "Back after a break — start ~10% lighter and build up.", suggest: Math.round(last.weight * 0.9) };
+    return { msg: "Back after a break - start ~10% lighter and build up.", suggest: Math.round(last.weight * 0.9) };
   }
-  // Look at the last up-to-3 top sets
   const recent = history.slice(-3);
   const allHitReps = recent.every((s) => s.reps >= targetReps);
   const sameWeight = recent.length >= 2 && recent.every((s) => s.weight === last.weight);
@@ -94,4 +119,39 @@ export function overloadAdvice(history, targetReps, kind) {
     return { msg: "Stay at this weight and nail the reps.", suggest: last.weight };
   }
   return { msg: "Match or beat last session.", suggest: last.weight };
+}
+
+// ── Accent color ─────────────────────────────────────────────────────
+// Recolors the whole app at runtime by setting CSS variables that the
+// Tailwind `gold` token references (see tailwind.config.js). Stored value is
+// the hex; we derive RGB triplets plus a dimmer and softer shade.
+export function applyAccent(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  const root = document.documentElement;
+  root.style.setProperty("--accent-rgb", `${r} ${g} ${b}`);
+  const dim = mix({ r, g, b }, { r: 0, g: 0, b: 0 }, 0.45);
+  const soft = mix({ r, g, b }, { r: 255, g: 255, b: 255 }, 0.35);
+  root.style.setProperty("--accent-dim-rgb", `${dim.r} ${dim.g} ${dim.b}`);
+  root.style.setProperty("--accent-soft-rgb", `${soft.r} ${soft.g} ${soft.b}`);
+  // Plain hex versions for SVG gradients / inline styles.
+  root.style.setProperty("--zor-accent", hex);
+  root.style.setProperty("--accent-dim", rgbToHex(dim));
+  root.style.setProperty("--accent-soft", rgbToHex(soft));
+}
+
+function hexToRgb(hex) {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const n = parseInt(full, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+function rgbToHex({ r, g, b }) {
+  return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("");
+}
+function mix(a, b, t) {
+  return {
+    r: Math.round(a.r * (1 - t) + b.r * t),
+    g: Math.round(a.g * (1 - t) + b.g * t),
+    b: Math.round(a.b * (1 - t) + b.b * t),
+  };
 }

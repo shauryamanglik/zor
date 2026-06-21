@@ -27,6 +27,22 @@ export default function Home({ setTab }) {
   const totalSessions = sessions.length;
   const proteinRemaining = Math.max(0, targets.p - totals.p);
 
+  // Workout streak: consecutive calendar days (counting back from today or
+  // yesterday) that have at least one logged session.
+  const streak = useMemo(() => {
+    if (!store.appPrefs?.showStreak) return 0;
+    const days = new Set(sessions.map((s) => s.date));
+    if (!days.size) return 0;
+    let count = 0;
+    const d = new Date();
+    // Allow today to be a rest/not-yet day: start from today, but if today has
+    // no session, begin counting from yesterday so a rest day doesn't zero it.
+    const iso = (x) => x.toISOString().slice(0, 10);
+    if (!days.has(iso(d))) d.setDate(d.getDate() - 1);
+    while (days.has(iso(d))) { count++; d.setDate(d.getDate() - 1); }
+    return count;
+  }, [sessions, store.appPrefs]);
+
   // Context-aware banner
   const banner = useMemo(() => {
     const h = new Date().getHours();
@@ -90,6 +106,19 @@ export default function Home({ setTab }) {
         </div>
       </Card>
 
+      {/* Macro balance alert: nudges when protein is short late in the day */}
+      {(() => {
+        const h = new Date().getHours();
+        if (h >= 16 && proteinRemaining > 35) {
+          return (
+            <Card className="p-3 mb-3 border-warn/25 bg-warn/5" onClick={() => setTab("food")}>
+              <p className="text-xs text-warn">{Math.round(proteinRemaining)}g protein still to go. Quick wins: Fairlife (30g), Greek yogurt (23g), or a scoop (24g).</p>
+            </Card>
+          );
+        }
+        return null;
+      })()}
+
       {/* Session card */}
       {!isSunday && (rest ? (
         <Card className="p-4 mb-3 flex items-center gap-3">
@@ -125,14 +154,18 @@ export default function Home({ setTab }) {
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
           {plan.map((m) => {
-            const logged = loggedToday.find((x) => x.slot === m.slot);
+            const logged = loggedToday.find((x) => x.slot === m.slot && !x.extraId);
             return (
               <div key={m.id} className={`min-w-[140px] p-3 rounded-card border ${logged ? "border-gold/40 bg-gold/5" : "border-line bg-surface"}`}>
                 <p className="text-[10px] text-ink-dim uppercase tracking-wide">{m.slot}</p>
                 <p className="text-xs font-medium mt-1 leading-tight line-clamp-2 h-8">{m.name}</p>
                 <div className="flex items-center justify-between mt-2">
                   <span className="text-[11px] text-gold tabular font-semibold">{m.macros.p}g</span>
-                  {logged ? <Tag color="gold">Logged</Tag> : !m.isCheat && !m.isRest && (
+                  {logged ? (
+                    <button onClick={() => { haptic("light"); store.unlogMeal(store.todayISO, m.slot); }} className="w-6 h-6 rounded-full bg-gold border border-gold flex items-center justify-center active:scale-90 transition" title="Tap to unlog">
+                      <Check className="w-3.5 h-3.5 text-bg" strokeWidth={3} />
+                    </button>
+                  ) : !m.isCheat && !m.isRest && (
                     <button onClick={() => { haptic("success"); store.logMeal(m); }} className="w-6 h-6 rounded-full border border-line flex items-center justify-center active:border-gold active:scale-90 transition">
                       <Check className="w-3.5 h-3.5 text-ink-faint" />
                     </button>
@@ -172,7 +205,10 @@ export default function Home({ setTab }) {
 
       {/* Stats */}
       <Card className="p-4">
-        <div className="grid grid-cols-3 gap-3 text-center">
+        <div className="grid grid-cols-4 gap-3 text-center">
+          {store.appPrefs?.showStreak && (
+            <div><p className="font-display text-2xl font-bold text-gold tabular">{streak}</p><p className="text-[10px] text-ink-dim">Day streak</p></div>
+          )}
           <div><p className="font-display text-2xl font-bold text-gold tabular">{totalSessions}</p><p className="text-[10px] text-ink-dim">Sessions</p></div>
           <div><p className="font-display text-2xl font-bold text-gold tabular">{store.prs.length}</p><p className="text-[10px] text-ink-dim">PRs Set</p></div>
           <div><p className="font-display text-2xl font-bold text-gold tabular">{store.bodyStats.length}</p><p className="text-[10px] text-ink-dim">Weigh-ins</p></div>

@@ -1,9 +1,9 @@
-// Hardcoded GIF map — verified against hasaneyldrm/exercises-dataset (1324 exercises).
+// Hardcoded GIF map - verified against hasaneyldrm/exercises-dataset (1324 exercises).
 // Educational / non-commercial personal use only.
-// Base URL for all paths:
 const BASE = "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/";
 
 const GIF_MAP = {
+  // Program defaults (verified)
   "Flat Barbell Bench Press":          "videos/0025-EIeI8Vf.gif",
   "Incline Dumbbell Press":            "videos/0314-ns0SIbU.gif",
   "Cable Chest Fly (low to high)":     "videos/1262-w4dLzSx.gif",
@@ -25,19 +25,26 @@ const GIF_MAP = {
   "Hanging Leg Raises":                "videos/0472-I3tsCnC.gif",
   "Cable Crunch":                      "videos/0175-WW95auq.gif",
   "Plank":                             "videos/0464-CosupLu.gif",
-  "Overhead Press Machine":            "videos/0603-67n3r98.gif",
   "Arnold Press":                      "videos/2137-Xy4jlWA.gif",
   "Pec Deck Fly":                      "videos/1262-w4dLzSx.gif",
   "Bicycle Crunches":                  "videos/0003-1ZFqTDN.gif",
   "Reverse Crunches":                  "videos/0872-nCU1Ekp.gif",
   "Ab Wheel Rollout":                  "videos/0971-zhF9lW4.gif",
-  "Single Arm Dumbbell Row":           "videos/1285-o5Jsk92.gif",
-  "Straight Arm Pulldown":             "videos/0238-x69MAlq.gif",
   "Concentration Curl":                "videos/0297-gvsWLQw.gif",
-  "Plank with Hip Dips":               "videos/3544-5VXmnV5.gif",
+  // Library - reuse verified GIFs for the same movement where a direct match exists.
+  "Machine Chest Press":               "videos/0314-ns0SIbU.gif",
+  "Reverse Pec Deck":                  "videos/1262-w4dLzSx.gif",
+  "Rope Overhead Extension":           "videos/0194-2IxROQ1.gif",
+  "Chest-supported Row":               "videos/0606-aaXr7ld.gif",
+  "Hack Squat":                        "videos/0739-10Z2DXU.gif",
+  "Cable Lateral Raise":               "videos/0334-DsgkuIt.gif",
+  "Machine Lateral Raise":             "videos/0334-DsgkuIt.gif",
+  "Cable Curl":                        "videos/0294-NbVPDMW.gif",
+  "Barbell Curl":                      "videos/0294-NbVPDMW.gif",
 };
 
-// Returns a full GIF URL or null — instant, no network call, no guessing.
+// Returns a full GIF URL or null - instant, no network call, no guessing.
+// Falls back to null so the how-to sheet still shows text steps cleanly.
 export function getExerciseGif(exerciseName) {
   const path = GIF_MAP[exerciseName];
   return path ? BASE + path : null;

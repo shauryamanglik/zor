@@ -12,8 +12,8 @@ const TOKEN_EXP_KEY = "zor_token_exp";
 
 // The tabs Zor uses and their header rows.
 export const TABS = {
-  Daily_Meals: ["date", "slot", "meal", "protein", "carbs", "fat", "fiber", "kcal", "status"],
-  Workouts: ["date", "session", "exercise", "set", "weight", "reps", "unit", "pr", "warmup"],
+  Daily_Meals: ["date", "slot", "meal", "protein", "carbs", "fat", "fiber", "kcal", "status", "extraId", "time"],
+  Workouts: ["date", "session", "exercise", "set", "weight", "reps", "unit", "pr", "warmup", "minutes", "speed", "incline", "distance"],
   Sessions: ["date", "name", "durationMin", "volume", "rpe", "notes"],
   Body_Stats: ["date", "weight", "chest", "waist", "arms", "notes"],
   Grocery_Lists: ["week", "item", "category", "qty", "checked"],
@@ -139,10 +139,12 @@ export async function ensureTabs() {
       }),
     });
   }
-  // Write headers for any tab whose first row is empty
+  // Write or update headers. If a tab's header row is empty OR shorter than the
+  // current schema (older version), rewrite just the header row to match.
   for (const [tab, headers] of Object.entries(TABS)) {
     const r = await api(`/values/${tab}!A1:Z1`);
-    if (!r.values || !r.values.length) {
+    const existing = r.values && r.values.length ? r.values[0] : [];
+    if (!existing.length || existing.length < headers.length) {
       await api(`/values/${tab}!A1?valueInputOption=RAW`, {
         method: "PUT",
         body: JSON.stringify({ values: [headers] }),

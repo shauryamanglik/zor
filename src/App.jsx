@@ -7,11 +7,14 @@ import Home from "./components/home/Home";
 import Food from "./components/food/Food";
 import Gym from "./components/gym/Gym";
 import Settings from "./components/settings/Settings";
+import LoadingScreen from "./components/shared/LoadingScreen";
 import { startReminderLoop, requestNotifPermission } from "./lib/notifications";
+import { applyAccent } from "./lib/utils";
 
 export default function App() {
   const store = useStore();
   const [tab, setTab] = useState("home");
+  const [splashDone, setSplashDone] = useState(false);
 
   // Start the reminder loop once onboarded
   useEffect(() => {
@@ -21,23 +24,15 @@ export default function App() {
     return stop;
   }, [store.onboarded, store.reminders]);
 
-  // Apply accent color as CSS variable
+  // Apply accent color across the whole app (recolors every gold token).
   useEffect(() => {
-    document.documentElement.style.setProperty("--zor-accent", store.accent);
+    applyAccent(store.accent || "#C9A84C");
   }, [store.accent]);
 
-  if (!store.ready) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0.3 }} animate={{ opacity: 1 }}
-          transition={{ repeat: Infinity, repeatType: "reverse", duration: 0.8 }}
-          className="font-display text-5xl font-bold text-gold"
-        >
-          Zor
-        </motion.div>
-      </div>
-    );
+  // Show the animated splash until both the store is ready AND the splash
+  // animation has had its moment.
+  if (!store.ready || !splashDone) {
+    return <LoadingScreen onDone={() => setSplashDone(true)} />;
   }
 
   if (!store.onboarded) {

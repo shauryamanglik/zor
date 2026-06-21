@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Pill, Bell, Ruler, Cloud, ChevronRight, Check, RefreshCw, LogOut, Scale, Palette, Download, User } from "lucide-react";
+import { Pill, Bell, Ruler, Cloud, ChevronRight, Check, RefreshCw, LogOut, Scale, Palette, Download, User, SlidersHorizontal } from "lucide-react";
 import { useStore } from "../../hooks/useStore";
 import { Card, Button, Sheet } from "../shared/UI";
 import { haptic } from "../../lib/utils";
@@ -14,7 +14,8 @@ export default function Settings() {
     { id: "notifications", label: "Notifications", icon: Bell, sub: `${store.reminders.filter((r) => r.on).length} on` },
     { id: "body", label: "Body Stats", icon: Ruler, sub: `${store.bodyStats.length} logged` },
     { id: "units", label: "Units", icon: Scale, sub: store.units },
-    { id: "appearance", label: "Appearance", icon: Palette, sub: "Gold" },
+    { id: "appearance", label: "Appearance", icon: Palette, sub: "Accent color" },
+    { id: "app", label: "App Settings", icon: SlidersHorizontal, sub: "Workout & behaviour" },
     { id: "data", label: "Data & Sync", icon: Cloud, sub: store.signedIn ? "Connected" : "Not connected" },
   ];
 
@@ -46,6 +47,7 @@ export default function Settings() {
         {sheet === "body" && <Sheet open onClose={() => setSheet(null)} title="Body Stats"><BodyPanel /></Sheet>}
         {sheet === "units" && <Sheet open onClose={() => setSheet(null)} title="Units"><UnitsPanel /></Sheet>}
         {sheet === "appearance" && <Sheet open onClose={() => setSheet(null)} title="Appearance"><AppearancePanel /></Sheet>}
+        {sheet === "app" && <Sheet open onClose={() => setSheet(null)} title="App Settings"><AppSettingsPanel /></Sheet>}
         {sheet === "data" && <Sheet open onClose={() => setSheet(null)} title="Data & Sync"><DataPanel /></Sheet>}
       </AnimatePresence>
     </div>
@@ -106,8 +108,8 @@ function NotificationsPanel() {
               className="text-[11px] text-ink-dim bg-transparent mt-0.5 outline-none"
             />
           </div>
-          <button onClick={() => toggle(r.id)} className={`w-11 h-6 rounded-full transition-colors relative ${r.on ? "bg-gold" : "bg-line"}`}>
-            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-bg transition-transform ${r.on ? "translate-x-5" : "translate-x-0.5"}`} />
+          <button onClick={() => toggle(r.id)} className={`w-11 h-6 rounded-full transition-colors relative flex-shrink-0 ${r.on ? "bg-gold" : "bg-line"}`}>
+            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-bg transition-all ${r.on ? "left-[22px]" : "left-0.5"}`} />
           </button>
         </Card>
       ))}
@@ -176,20 +178,65 @@ function AppearancePanel() {
     { name: "Azure", hex: "#6BA4E0" },
     { name: "Crimson", hex: "#E05C5C" },
     { name: "Violet", hex: "#9B6BE0" },
+    { name: "Amber", hex: "#E0A84C" },
+    { name: "Teal", hex: "#3FB8B0" },
+    { name: "Rose", hex: "#E06B9B" },
+    { name: "Lime", hex: "#A8C94C" },
+    { name: "Ice", hex: "#8FB8D8" },
   ];
   return (
     <div>
-      <p className="text-xs text-ink-dim mb-3">Zor is a dark app by design. Pick your accent color.</p>
+      <p className="text-xs text-ink-dim mb-3">Zor is a dark app by design. Pick your accent color. It updates instantly and sticks until you change it.</p>
       <div className="grid grid-cols-5 gap-3">
         {colors.map((c) => (
           <button key={c.hex} onClick={() => { haptic("light"); store.setAccent(c.hex); }} className="flex flex-col items-center gap-1">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: c.hex }}>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center transition-transform active:scale-90" style={{ background: c.hex, boxShadow: store.accent === c.hex ? `0 0 0 3px var(--bg, #0F1117), 0 0 0 5px ${c.hex}` : "none" }}>
               {store.accent === c.hex && <Check className="w-5 h-5 text-bg" strokeWidth={3} />}
             </div>
             <span className="text-[9px] text-ink-dim">{c.name}</span>
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+function AppSettingsPanel() {
+  const store = useStore();
+  const p = store.appPrefs;
+  const Toggle = ({ on, onClick }) => (
+    <button onClick={onClick} className={`w-11 h-6 rounded-full transition-colors relative flex-shrink-0 ${on ? "bg-gold" : "bg-line"}`}>
+      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-bg transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
+    </button>
+  );
+  const Row = ({ label, sub, k }) => (
+    <Card className="p-3.5 flex items-center gap-3">
+      <div className="flex-1">
+        <p className="text-sm font-medium">{label}</p>
+        {sub && <p className="text-[11px] text-ink-dim mt-0.5">{sub}</p>}
+      </div>
+      <Toggle on={p[k]} onClick={() => { haptic("light"); store.updateAppPrefs({ [k]: !p[k] }); }} />
+    </Card>
+  );
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-ink-dim mb-1">Tune how the workout flow and app behave. Changes save instantly.</p>
+      <Row label="Confirm before ending workout" sub="Ask before finishing if exercises remain" k="confirmEndWorkout" />
+      <Row label="Auto-start rest timer" sub="Begin rest countdown after each set" k="autoStartRest" />
+      <Row label="Ask for effort rating & notes" sub="Show RPE and notes on the complete screen" k="askReviewAfterWorkout" />
+      <Row label="Keep screen awake in workout" sub="Prevent dimming mid-session" k="keepScreenAwake" />
+      <Row label="Show day streak on Home" sub="Track consecutive training days" k="showStreak" />
+
+      <Card className="p-3.5">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-sm font-medium">Default rest time</p>
+          <span className="text-xs text-gold tabular">{p.defaultRestSec}s</span>
+        </div>
+        <p className="text-[11px] text-ink-dim mb-2">Used when an exercise doesn't specify its own rest.</p>
+        <input type="range" min="30" max="180" step="15" value={p.defaultRestSec} onChange={(e) => store.updateAppPrefs({ defaultRestSec: Number(e.target.value) })} className="w-full accent-gold" />
+      </Card>
+
+      <p className="text-[10px] text-ink-faint text-center pt-2">More controls land here as Zor grows.</p>
     </div>
   );
 }

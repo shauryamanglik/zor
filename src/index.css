@@ -4,6 +4,11 @@
 
 :root {
   color-scheme: dark;
+  --bg: #0F1117;
+  --accent-rgb: 201 168 76;
+  --accent-dim-rgb: 140 107 47;
+  --accent-soft-rgb: 224 197 110;
+  --zor-accent: #C9A84C;
 }
 
 * {

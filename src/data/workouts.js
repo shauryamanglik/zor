@@ -15,7 +15,7 @@ export const PROGRAM = {
     name: "Push A",
     sub: "Chest · Shoulders · Triceps",
     warmup: "push",
-    cardio: { name: "Incline Treadmill Walk", detail: "15 min · 10-12% incline · 3.5 mph", durationMin: 15 },
+    cardio: { name: "Incline Treadmill Walk", mode: "walk", detail: "15 min · 11% incline · 3.5 mph", durationMin: 15, speed: 3.5, incline: 11, speedUnit: "mph" },
     exercises: [
       {
         id: "mon-1", name: "Flat Barbell Bench Press", machine: "Barbell + flat bench", kind: "compound",
@@ -210,7 +210,7 @@ export const PROGRAM = {
     name: "Legs + Abs",
     sub: "Quads · Hamstrings · Core",
     warmup: "legs",
-    cardio: { name: "Incline Treadmill Walk", detail: "15 min · 10% incline · 3.5 mph", durationMin: 15 },
+    cardio: { name: "Incline Treadmill Walk", mode: "walk", detail: "15 min · 10% incline · 3.5 mph", durationMin: 15, speed: 3.5, incline: 10, speedUnit: "mph" },
     exercises: [
       {
         id: "wed-1", name: "Leg Press", machine: "Leg press machine", kind: "compound",
@@ -426,7 +426,7 @@ export const PROGRAM = {
     name: "Pull B",
     sub: "Back · Biceps · Abs",
     warmup: "pull",
-    cardio: { name: "Incline Treadmill Walk", detail: "15 min · 10% incline · 3.5 mph", durationMin: 15 },
+    cardio: { name: "Incline Treadmill Walk", mode: "walk", detail: "15 min · 10% incline · 3.5 mph", durationMin: 15, speed: 3.5, incline: 10, speedUnit: "mph" },
     exercises: [
       {
         id: "sat-1", name: "Lat Pulldown (close underhand)", machine: "Lat pulldown machine", kind: "compound",
