@@ -157,11 +157,11 @@ export default function Food() {
       {view === "plan" && (
         <button
           onClick={() => { haptic("light"); setQuickAdd(true); }}
-          className="fixed right-4 bottom-24 z-30 w-14 h-14 rounded-full bg-gold text-bg shadow-lg flex items-center justify-center active:scale-90 transition"
+          className="fixed right-4 bottom-28 z-30 w-14 h-14 rounded-full bg-gold text-bg shadow-lg flex items-center justify-center active:scale-90 transition"
           style={{ boxShadow: "0 6px 20px rgba(201,168,76,0.4)" }}
           aria-label="Quick add food"
         >
-          <Apple className="w-6 h-6" strokeWidth={2.2} />
+          <Plus className="w-6 h-6" strokeWidth={2.2} />
         </button>
       )}
     </div>
