@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 
-// Splash: the gold Z-bolt logo flies in, glints, then "Zor" rises beneath it.
+// Splash: the gold Z-bolt logo flies in, then "Zor" rises beneath it.
 // Logo lives at /icon-512.png (gold metallic Z on transparent). If it ever
 // fails to load we fall back to a crafted SVG bolt so the splash never breaks.
 export default function LoadingScreen({ onDone }) {
@@ -38,19 +38,9 @@ export default function LoadingScreen({ onDone }) {
           transition={{ duration: 0.6, delay: 0.2 }}
           onError={(e) => { e.currentTarget.style.display = "none"; }}
         />
-        {/* Glint sweep across the logo */}
-        <motion.div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: "linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.55) 50%, transparent 65%)",
-            mixBlendMode: "screen",
-          }}
-          initial={{ x: "-120%" }}
-          animate={{ x: "120%" }}
-          transition={{ duration: 0.7, delay: 0.5, ease: "easeInOut" }}
-        />
       </motion.div>
 
+      {/* Text */}
       <motion.div
         initial={{ opacity: 0, y: 12, letterSpacing: "0.5em" }}
         animate={{ opacity: 1, y: 0, letterSpacing: "0.02em" }}
@@ -59,13 +49,6 @@ export default function LoadingScreen({ onDone }) {
       >
         Zor
       </motion.div>
-
-      <motion.div
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ duration: 0.7, delay: 0.5, ease: "easeInOut" }}
-        className="mt-3 h-[2px] w-20 bg-gold/70 origin-left rounded-full relative"
-      />
     </div>
   );
 }
